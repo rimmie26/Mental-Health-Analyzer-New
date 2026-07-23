@@ -1,0 +1,96 @@
+import { motion } from 'framer-motion';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+
+interface ResultsDashboardProps {
+  data: any;
+  onReset: () => void;
+}
+
+export const ResultsDashboard = ({ data, onReset }: ResultsDashboardProps) => {
+  const { riskLevel, riskScore, stressFactors, recommendations, riskDistribution } = data;
+
+  const colors: Record<string, string> = { 
+    Low: 'text-green-500', 
+    Moderate: 'text-yellow-500', 
+    High: 'text-red-500' 
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-cream rounded-3xl p-8 shadow-2xl max-w-4xl mx-auto"
+    >
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-3xl font-bold text-charcoal">
+          <i className="fas fa-brain text-dark-yellow mr-3"></i> Analysis
+        </h2>
+        <button
+          onClick={onReset}
+          className="px-4 py-2 bg-white rounded-full text-charcoal/60 hover:text-charcoal border border-pastel-blue/20"
+        >
+          <i className="fas fa-arrow-left mr-2"></i> Retake
+        </button>
+      </div>
+
+      <div className="bg-gradient-to-r from-pastel-yellow/30 to-pastel-blue/30 rounded-2xl p-6 mb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold">Risk Level</h3>
+            <p className={`text-3xl font-bold ${colors[riskLevel] || 'text-charcoal'}`}>
+              {riskLevel} {riskLevel === 'Low' ? '😊' : riskLevel === 'Moderate' ? '🤔' : '😟'}
+            </p>
+            <p className="text-sm text-charcoal/60">Score: {riskScore}/100</p>
+          </div>
+          <div className="w-24 h-24 rounded-full bg-white/50 flex items-center justify-center border-4 border-dark-yellow">
+            <span className="text-2xl font-bold">{riskScore}%</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="bg-white/80 rounded-2xl p-6 shadow-md">
+          <h3 className="text-lg font-semibold mb-4">Risk Distribution</h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={riskDistribution} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                  {riskDistribution.map((e: any, i: number) => <Cell key={i} fill={e.color} />)}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="bg-white/80 rounded-2xl p-6 shadow-md">
+          <h3 className="text-lg font-semibold mb-4">Stress Contributors</h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={stressFactors} layout="vertical">
+                <XAxis type="number" domain={[0, 100]} hide />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Bar dataKey="value" fill="#d4a373" radius={[0, 8, 8, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-8 bg-gradient-to-r from-pastel-yellow/20 to-pastel-blue/20 rounded-2xl p-6">
+        <h3 className="text-lg font-semibold mb-3">
+          <i className="fas fa-lightbulb text-dark-yellow mr-2"></i> Recommendations
+        </h3>
+        <ul className="space-y-2">
+          {recommendations.map((rec: string, i: number) => (
+            <li key={i} className="flex items-start gap-2">
+              <i className="fas fa-check-circle text-dark-yellow mt-1"></i>
+              <span>{rec}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </motion.div>
+  );
+};
