@@ -24,7 +24,7 @@ function App() {
   };
 
   const handleBackToHome = () => {
-    setCurrentPage('home'); // ← Goes to Home page, not landing
+    setCurrentPage('home');
   };
 
   const handleNavigate = (page: string) => {
