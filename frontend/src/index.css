@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 @layer base {
+<<<<<<< HEAD
   * {
     margin: 0;
     padding: 0;
@@ -15,10 +16,16 @@
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+=======
+  body {
+    @apply bg-gradient-to-br from-pastel-blue-50 to-buttery-50 min-h-screen;
+    font-family: 'Nunito', 'Quicksand', sans-serif;
+>>>>>>> d8c8916d369307ad8403fcdfdff60fa3581a8186
   }
 }
 
 @layer components {
+<<<<<<< HEAD
   /* Custom scrollbar */
   ::-webkit-scrollbar {
     width: 8px;
@@ -150,3 +157,15 @@
     border: 1px solid rgba(255, 255, 255, 0.2);
   }
 }
+=======
+  .glass-card {
+    @apply bg-white/30 backdrop-blur-lg border border-white/20 rounded-2xl shadow-xl;
+  }
+  
+  .btn-primary {
+    @apply px-6 py-3 bg-buttery-300 hover:bg-buttery-400 text-gray-700 rounded-full 
+           font-semibold transition-all duration-300 transform hover:scale-105 
+           shadow-lg hover:shadow-xl;
+  }
+}
+>>>>>>> d8c8916d369307ad8403fcdfdff60fa3581a8186

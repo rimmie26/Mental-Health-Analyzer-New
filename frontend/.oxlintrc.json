@@ -1,6 +1,10 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
+<<<<<<< HEAD
   "plugins": ["react", "typescript", "oxc"],
+=======
+  "plugins": ["react", "oxc"],
+>>>>>>> d8c8916d369307ad8403fcdfdff60fa3581a8186
   "rules": {
     "react/rules-of-hooks": "error",
     "react/only-export-components": ["warn", { "allowConstantExport": true }]
