@@ -5,6 +5,7 @@ import Login from './components/ui/Login';
 import About from './components/ui/About';
 import Contact from './components/ui/Contact';
 import { Questionnaire } from './components/screener/Questionnaire';
+import ChatWidget from './components/ui/ChatWidget';
 
 type Page = 'hero' | 'home' | 'login' | 'screener' | 'about' | 'contact';
 
@@ -96,16 +97,8 @@ function App() {
         onNavigate={handleNavigate}
       />
       
-      {/* Floating Chat Bubble */}
-      <div className="fixed bottom-8 right-8 z-50">
-        <button 
-          onClick={() => console.log('Chat with Serenoa clicked!')}
-          className="group bg-white text-dark-yellow p-4 rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 flex items-center gap-2 hover:scale-110"
-        >
-          <i className="fas fa-comment-dots text-xl group-hover:animate-pulse"></i>
-          <span className="font-semibold hidden md:inline text-sm">Talk to Serenoa</span>
-        </button>
-      </div>
+      {/* Chat Widget - Floating */}
+      <ChatWidget />
     </>
   );
 }
