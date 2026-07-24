@@ -8,95 +8,297 @@ interface AboutProps {
 }
 
 export const About: React.FC<AboutProps> = ({ onNavigate, onLogin }) => {
+  const stats = [
+    { value: '50K+', label: 'Active Users', icon: 'fa-users', color: 'text-blue-500', bg: 'bg-blue-100' },
+    { value: '5M+', label: 'Minutes Meditated', icon: 'fa-clock', color: 'text-green-500', bg: 'bg-green-100' },
+    { value: '92%', label: 'User Satisfaction', icon: 'fa-star', color: 'text-purple-500', bg: 'bg-purple-100' },
+    { value: '24/7', label: 'Support Available', icon: 'fa-headset', color: 'text-amber-500', bg: 'bg-amber-100' },
+  ];
+
+  const features = [
+    {
+      icon: '🧠',
+      title: 'AI-Powered',
+      desc: 'Intelligent conversations tailored to your needs',
+      color: 'from-blue-400 to-cyan-400',
+      bg: 'bg-blue-50',
+      textColor: 'text-blue-600',
+      borderColor: 'border-blue-200'
+    },
+    {
+      icon: '🔒',
+      title: 'Private & Secure',
+      desc: 'Your data stays confidential and protected',
+      color: 'from-purple-400 to-violet-400',
+      bg: 'bg-purple-50',
+      textColor: 'text-purple-600',
+      borderColor: 'border-purple-200'
+    },
+    {
+      icon: '💚',
+      title: '24/7 Support',
+      desc: 'Available anytime, anywhere you need it',
+      color: 'from-rose-400 to-pink-400',
+      bg: 'bg-rose-50',
+      textColor: 'text-rose-600',
+      borderColor: 'border-rose-200'
+    },
+    {
+      icon: '📊',
+      title: 'Progress Tracking',
+      desc: 'Monitor your wellness journey with detailed insights',
+      color: 'from-amber-400 to-orange-400',
+      bg: 'bg-amber-50',
+      textColor: 'text-amber-600',
+      borderColor: 'border-amber-200'
+    },
+  ];
+
+  const team = [
+    { name: 'Alex Johnson', role: 'Founder & CEO', emoji: '👨‍💼' },
+    { name: 'Sarah Chen', role: 'Lead Psychologist', emoji: '👩‍⚕️' },
+    { name: 'Mike Patel', role: 'AI Engineer', emoji: '👨‍💻' },
+    { name: 'Emily Davis', role: 'UX Designer', emoji: '🎨' },
+  ];
+
+  const testimonials = [
+    {
+      quote: "Serenoa changed how I view finals week. It's not about the grind anymore; it's about the flow.",
+      author: 'Sarah J.',
+      role: 'Graduate Student'
+    },
+    {
+      quote: "The breathing exercises helped me manage my anxiety better than anything I've tried before.",
+      author: 'David R.',
+      role: 'Software Engineer'
+    },
+  ];
+
   return (
-    <div className="relative w-full min-h-screen overflow-hidden bg-gradient-to-br from-[#1a1008] via-dark-yellow-dark to-[#1a1008]">
-      {/* Enhanced Animated Background Blobs - Darker */}
-      <div className="absolute top-20 left-20 w-96 h-96 bg-pastel-yellow/10 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute bottom-20 right-20 w-96 h-96 bg-pastel-blue/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-white/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '4s' }} />
-      <div className="absolute top-40 right-40 w-72 h-72 bg-orange-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-      <div className="absolute bottom-40 left-40 w-72 h-72 bg-yellow-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '3s' }} />
+    <div className="relative w-full min-h-screen overflow-hidden bg-gradient-to-br from-amber-50/90 via-orange-50/80 to-rose-50/90">
+      {/* Decorative Background Blobs */}
+      <div className="absolute top-20 right-20 w-96 h-96 bg-amber-200/40 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-20 left-20 w-96 h-96 bg-pink-200/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-100/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '4s' }} />
 
       {/* Navbar */}
       <div className="relative z-20 px-6 py-4">
-        <Navbar onLogin={onLogin} onNavigate={onNavigate} currentPage="about" />
+        <div className="max-w-7xl mx-auto">
+          <Navbar 
+            onLogin={onLogin} 
+            onNavigate={onNavigate} 
+            currentPage="about" 
+            variant="light"
+          />
+        </div>
       </div>
 
-      {/* Content */}
-      <div className="relative z-10 flex flex-col items-center justify-center px-4 py-12 md:py-20">
+      {/* Main Content */}
+      <div className="relative z-10 max-w-7xl mx-auto px-4 py-6 md:py-10">
+        {/* Hero Section */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="max-w-4xl mx-auto text-center"
+          className="text-center mb-12"
         >
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="inline-block mb-6"
-          >
-            <div className="bg-gradient-to-r from-orange-500 to-yellow-500 p-0.5 rounded-2xl">
-              <div className="bg-black/40 backdrop-blur-sm px-6 py-2 rounded-2xl">
-                <span className="text-sm font-medium text-warm-white/80">🧠 About Us</span>
-              </div>
-            </div>
-          </motion.div>
-
-          <h1 className="text-4xl md:text-5xl font-bold text-warm-white mb-6">
-            About <span className="bg-gradient-to-r from-pastel-yellow to-warm-white bg-clip-text text-transparent">Serenoa</span>
+          <div className="inline-block bg-gradient-to-r from-amber-200 to-orange-200 px-5 py-1.5 rounded-full mb-3">
+            <span className="text-xs font-medium text-amber-700">🌟 About Us</span>
+          </div>
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-800 mb-4">
+            Your Mental Wellness
+            <br />
+            <span className="bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
+              Companion
+            </span>
           </h1>
-          
-          <div className="space-y-6 text-warm-white/80">
-            <motion.p 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="text-lg md:text-xl leading-relaxed bg-white/5 backdrop-blur-sm p-6 rounded-2xl border border-white/10"
-            >
-              Serenoa is your AI-powered mental health companion designed to help you navigate 
-              stress, anxiety, and everyday challenges with ease.
-            </motion.p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-              {[
-                { emoji: '🧠', title: 'AI-Powered', desc: 'Intelligent conversations tailored to your needs', delay: 0.4 },
-                { emoji: '🔒', title: 'Private & Secure', desc: 'Your data stays confidential and protected', delay: 0.5 },
-                { emoji: '💚', title: '24/7 Support', desc: 'Available anytime, anywhere you need it', delay: 0.6 }
-              ].map((item, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: item.delay }}
-                  whileHover={{ scale: 1.05, y: -5 }}
-                  className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 hover:border-pastel-yellow/30 transition-all duration-300"
-                >
-                  <div className="text-4xl mb-3">{item.emoji}</div>
-                  <h3 className="text-lg font-semibold text-warm-white">{item.title}</h3>
-                  <p className="text-sm text-warm-white/60 mt-2">{item.desc}</p>
-                </motion.div>
-              ))}
-            </div>
+          <p className="text-sm md:text-base text-gray-600 max-w-3xl mx-auto leading-relaxed">
+            Serenoa is your AI-powered mental health companion designed to help you navigate 
+            stress, anxiety, and everyday challenges with ease.
+          </p>
+        </motion.div>
 
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.7 }}
-              className="mt-8 p-6 bg-gradient-to-r from-orange-500/10 to-yellow-500/10 rounded-2xl border border-orange-500/20"
+        {/* Stats Grid */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-12"
+        >
+          {stats.map((stat, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.3 + i * 0.1 }}
+              whileHover={{ y: -4, scale: 1.02 }}
+              className={`${stat.bg} rounded-xl p-4 text-center border border-white/50 hover:shadow-lg transition-all`}
             >
-              <p className="text-sm text-warm-white/80">
-                <span className="text-warm-white font-medium text-base">🌟 Our Mission:</span> To make mental wellness 
-                accessible to everyone through innovative AI technology and compassionate support.
-              </p>
+              <i className={`fas ${stat.icon} text-xl ${stat.color} mb-1`}></i>
+              <p className="text-xl md:text-2xl font-bold text-gray-800">{stat.value}</p>
+              <p className="text-[10px] md:text-xs text-gray-500">{stat.label}</p>
             </motion.div>
+          ))}
+        </motion.div>
+
+        {/* Features Grid */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="mb-12"
+        >
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-800 text-center mb-2">
+            Why Choose <span className="bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">Serenoa</span>
+          </h2>
+          <p className="text-sm text-gray-500 text-center max-w-2xl mx-auto mb-8">
+            We combine cutting-edge AI with compassionate care to provide you with the best mental wellness experience.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {features.map((feature, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 + i * 0.1 }}
+                whileHover={{ y: -6 }}
+                className={`${feature.bg} rounded-xl p-5 border ${feature.borderColor} hover:shadow-lg transition-all text-center`}
+              >
+                <div className="text-3xl mb-2">{feature.icon}</div>
+                <h3 className={`text-sm font-semibold ${feature.textColor}`}>{feature.title}</h3>
+                <p className="text-xs text-gray-500 mt-1">{feature.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Mission & Vision */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.6 }}
+          className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12"
+        >
+          <div className="bg-white/70 backdrop-blur-sm rounded-xl p-6 border border-white/50 hover:shadow-lg transition-all">
+            <div className="text-3xl mb-2">🎯</div>
+            <h3 className="text-base font-bold text-gray-800 mb-1">Our Mission</h3>
+            <p className="text-xs text-gray-600 leading-relaxed">
+              To make mental wellness accessible to everyone through innovative AI technology 
+              and compassionate support, breaking down barriers to mental health care.
+            </p>
+          </div>
+          <div className="bg-white/70 backdrop-blur-sm rounded-xl p-6 border border-white/50 hover:shadow-lg transition-all">
+            <div className="text-3xl mb-2">🌟</div>
+            <h3 className="text-base font-bold text-gray-800 mb-1">Our Vision</h3>
+            <p className="text-xs text-gray-600 leading-relaxed">
+              A world where mental wellness is prioritized, and everyone has access to 
+              personalized, AI-powered support whenever they need it.
+            </p>
+          </div>
+        </motion.div>
+
+        {/* Testimonials */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.8 }}
+          className="mb-12"
+        >
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-800 text-center mb-2">
+            What Our Users Say
+          </h2>
+          <p className="text-sm text-gray-500 text-center max-w-2xl mx-auto mb-8">
+            Hear from people who have transformed their mental wellness journey with Serenoa.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {testimonials.map((testimonial, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.9 + i * 0.1 }}
+                whileHover={{ y: -4 }}
+                className="bg-white/70 backdrop-blur-sm rounded-xl p-5 border border-white/50 hover:shadow-lg transition-all"
+              >
+                <div className="flex items-start gap-2">
+                  <span className="text-3xl text-amber-400">"</span>
+                  <p className="text-sm text-gray-700 italic leading-relaxed">{testimonial.quote}</p>
+                </div>
+                <div className="mt-3 ml-7">
+                  <p className="text-sm font-semibold text-gray-800">{testimonial.author}</p>
+                  <p className="text-xs text-gray-500">{testimonial.role}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Team Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 1 }}
+          className="mb-12"
+        >
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-800 text-center mb-2">
+            Meet Our <span className="bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">Team</span>
+          </h2>
+          <p className="text-sm text-gray-500 text-center max-w-2xl mx-auto mb-8">
+            Passionate individuals dedicated to improving mental wellness through technology.
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {team.map((member, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 1.1 + i * 0.1 }}
+                whileHover={{ y: -4 }}
+                className="bg-white/70 backdrop-blur-sm rounded-xl p-5 text-center border border-white/50 hover:shadow-lg transition-all"
+              >
+                <div className="text-3xl mb-1">{member.emoji}</div>
+                <p className="text-sm font-semibold text-gray-800">{member.name}</p>
+                <p className="text-xs text-gray-500">{member.role}</p>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* CTA Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 1.2 }}
+          className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl p-6 md:p-8 text-center text-white"
+        >
+          <h3 className="text-xl md:text-2xl font-bold mb-2">
+            Ready to Start Your Wellness Journey?
+          </h3>
+          <p className="text-white/80 mb-5 max-w-2xl mx-auto text-sm">
+            Join thousands of users who have found peace and balance with Serenoa.
+          </p>
+          <div className="flex flex-wrap gap-3 justify-center">
+            <button
+              onClick={() => onNavigate('hero')}
+              className="px-6 py-2.5 bg-white text-amber-600 font-semibold rounded-xl hover:bg-gray-50 transition-all hover:scale-105 shadow-lg text-sm"
+            >
+              <i className="fas fa-rocket mr-2"></i>
+              Go Home
+            </button>
+            <button
+              onClick={() => onNavigate('contact')}
+              className="px-6 py-2.5 bg-amber-600/30 text-white font-semibold rounded-xl hover:bg-amber-600/40 transition-all hover:scale-105 border border-white/30 text-sm"
+            >
+              <i className="fas fa-envelope mr-2"></i>
+              Contact Us
+            </button>
           </div>
         </motion.div>
       </div>
 
       {/* Footer */}
-      <div className="relative z-10 text-center py-6">
-        <p className="text-xs text-warm-white/20">© 2026 Serenoa — AI Mental Health Companion</p>
+      <div className="relative z-10 text-center py-4 border-t border-gray-200/30">
+        <p className="text-[10px] text-gray-400">© 2026 Serenoa — AI Mental Health Companion</p>
       </div>
     </div>
   );

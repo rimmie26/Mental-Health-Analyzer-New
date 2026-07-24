@@ -26,7 +26,7 @@ interface HeroProps {
   showNavbar?: boolean;
   showStats?: boolean;
   onLogin?: () => void;
-  onNavigate?: (page: string) => void;  // ← ADDED
+  onNavigate?: (page: string) => void;
 }
 
 // Reusable Shader Background Hook
@@ -332,7 +332,7 @@ const Hero: React.FC<HeroProps> = ({
   showNavbar = true,
   showStats = true,
   onLogin,
-  onNavigate  // ← ADDED
+  onNavigate
 }) => {
   const canvasRef = useShaderBackground();
 
@@ -340,66 +340,20 @@ const Hero: React.FC<HeroProps> = ({
     <div className={`relative w-full h-screen overflow-hidden bg-black ${className}`}>
       <style>{`
         @keyframes fade-in-down {
-          from {
-            opacity: 0;
-            transform: translateY(-20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(-20px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-        
         @keyframes fade-in-up {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-        
-        .animate-fade-in-down {
-          animation: fade-in-down 0.8s ease-out forwards;
-        }
-        
-        .animate-fade-in-up {
-          animation: fade-in-up 0.8s ease-out forwards;
-          opacity: 0;
-        }
-        
-        .animation-delay-200 {
-          animation-delay: 0.2s;
-        }
-        
-        .animation-delay-400 {
-          animation-delay: 0.4s;
-        }
-        
-        .animation-delay-600 {
-          animation-delay: 0.6s;
-        }
-        
-        .animation-delay-800 {
-          animation-delay: 0.8s;
-        }
-        
-        .animation-delay-1000 {
-          animation-delay: 1.0s;
-        }
-        
-        @keyframes gradient-shift {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-        
-        .animate-gradient {
-          background-size: 200% 200%;
-          animation: gradient-shift 3s ease infinite;
-        }
+        .animate-fade-in-down { animation: fade-in-down 0.8s ease-out forwards; }
+        .animate-fade-in-up { animation: fade-in-up 0.8s ease-out forwards; opacity: 0; }
+        .animation-delay-200 { animation-delay: 0.2s; }
+        .animation-delay-400 { animation-delay: 0.4s; }
+        .animation-delay-600 { animation-delay: 0.6s; }
+        .animation-delay-800 { animation-delay: 0.8s; }
+        .animation-delay-1000 { animation-delay: 1.0s; }
       `}</style>
       
       <canvas
@@ -408,16 +362,13 @@ const Hero: React.FC<HeroProps> = ({
         style={{ background: 'black' }}
       />
       
-      {/* Navbar - Fixed at top */}
       {showNavbar && (
         <div className="absolute top-0 left-0 right-0 z-20 px-6 py-4">
-          <Navbar onLogin={onLogin} onNavigate={onNavigate} currentPage="home" />
+          <Navbar onLogin={onLogin} onNavigate={onNavigate} currentPage="hero" />
         </div>
       )}
       
-      {/* Hero Content Overlay */}
       <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-white">
-        {/* Trust Badge */}
         {trustBadge && (
           <div className="mb-6 animate-fade-in-down">
             <div className="flex items-center gap-2 px-5 py-2.5 bg-orange-500/10 backdrop-blur-md border border-orange-300/30 rounded-full text-sm">
@@ -436,7 +387,6 @@ const Hero: React.FC<HeroProps> = ({
         )}
 
         <div className="text-center space-y-4 max-w-5xl mx-auto px-4">
-          {/* Main Heading */}
           <div className="space-y-1">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-orange-300 via-yellow-400 to-amber-300 bg-clip-text text-transparent animate-fade-in-up animation-delay-200">
               {headline.line1}
@@ -446,14 +396,12 @@ const Hero: React.FC<HeroProps> = ({
             </h1>
           </div>
           
-          {/* Subtitle */}
           <div className="max-w-3xl mx-auto animate-fade-in-up animation-delay-600">
             <p className="text-base md:text-lg lg:text-xl text-orange-100/90 font-light leading-relaxed">
               {subtitle}
             </p>
           </div>
           
-          {/* CTA Buttons */}
           {buttons && (
             <div className="flex flex-col sm:flex-row gap-3 justify-center mt-8 animate-fade-in-up animation-delay-800">
               {buttons.primary && (
@@ -475,7 +423,6 @@ const Hero: React.FC<HeroProps> = ({
             </div>
           )}
 
-          {/* Stats - Smaller Fonts */}
           {showStats && (
             <div className="flex flex-wrap gap-6 md:gap-8 justify-center mt-6 md:mt-8 animate-fade-in-up animation-delay-1000">
               <div className="text-center">
@@ -502,6 +449,7 @@ const Hero: React.FC<HeroProps> = ({
   );
 };
 
+// Original Shader with Orange/Yellow/Amber Colors
 const defaultShaderSource = `#version 300 es
 /*********
 * made by Matthias Hurrle (@atzedent)
