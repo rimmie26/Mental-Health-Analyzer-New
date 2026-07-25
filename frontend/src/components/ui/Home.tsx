@@ -6,6 +6,7 @@ import { Progress } from './Progress';
 import { Profile } from './Profile';
 import MoodGarden from './MoodGarden';
 import AIInsights from './AIInsights';
+import WeeklyGoals from "../dashboard/WeeklyGoals";
 
 interface HomeProps {
   onStartScreening: () => void;
@@ -449,6 +450,16 @@ export const Home: React.FC<HomeProps> = ({ onStartScreening, onLogin, onNavigat
             <p className="text-xs text-gray-500">✨ Mood logged: {selectedMood || 'Not yet'}</p>
           </div>
         </div>
+      </div>
+
+      {/* Weekly Goals */}
+      <WeeklyGoals />
+
+      {/* Motivational Message */}
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+        <p className="text-center text-gray-600">
+        🌱 Keep going! Every small step you take today builds a healthier tomorrow.
+        </p>
       </div>
 
       {/* Quick Actions */}
