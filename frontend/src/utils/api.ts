@@ -315,3 +315,79 @@ export const calculateRisk = (data: ScreenerData) => {
     ],
   };
 };
+
+// ===== Wellbeing sliders (Overall Well-being Score + per-category health bars) =====
+export interface WellbeingCategory {
+  key: string;
+  label: string;
+  icon: string; // emoji, matches your email format
+  score: number; // 0-100, higher = healthier
+}
+
+export interface WellbeingResult {
+  overall: number;
+  categories: WellbeingCategory[];
+}
+
+export const calculateWellbeing = (data: ScreenerData): WellbeingResult => {
+  // --- Academic Health ---
+  const pressureScore = data.academicPressure != null
+    ? ((5 - data.academicPressure) / 5) * 50
+    : 25;
+  const satisfactionScore = data.studySatisfaction != null
+    ? (data.studySatisfaction / 5) * 50
+    : 25;
+  const academicHealth = Math.round(pressureScore + satisfactionScore);
+
+  // --- Sleep Health ---
+  const sleepMap: Record<string, number> = {
+    'Less than 5 hours': 20,
+    '5-6 hours': 45,
+    '6-7 hours': 70,
+    '7-8 hours': 95,
+    'More than 8 hours': 80,
+  };
+  const sleepHealth = data.sleepDuration ? (sleepMap[data.sleepDuration] ?? 50) : 50;
+
+  // --- Lifestyle Health ---
+  const dietMap: Record<string, number> = {
+    'Healthy': 90,
+    'Moderate': 60,
+    'Unhealthy': 25,
+  };
+  const dietScore = data.dietaryHabits ? (dietMap[data.dietaryHabits] ?? 50) : 50;
+  const hoursScore = data.workStudyHours != null
+    ? Math.max(0, 100 - Math.max(0, data.workStudyHours - 6) * 8)
+    : 60;
+  const lifestyleHealth = Math.round((dietScore + hoursScore) / 2);
+
+  // --- Mental Well-being ---
+  let mentalHealth = 70;
+  if (data.jobSatisfaction != null) {
+    mentalHealth += (data.jobSatisfaction - 2.5) * 6;
+  }
+  if (data.familyHistory === 'Yes') mentalHealth -= 10;
+  if (data.suicidalThoughts === 'Yes') mentalHealth -= 40;
+  mentalHealth = Math.round(Math.min(100, Math.max(0, mentalHealth)));
+
+  // --- Financial Well-being ---
+  const financialHealth = data.financialStress != null
+    ? Math.round(((5 - data.financialStress) / 4) * 100)
+    : 50;
+
+  const clamp = (n: number) => Math.min(100, Math.max(0, n));
+
+  const categories: WellbeingCategory[] = [
+    { key: 'academic', label: 'Academic Health', icon: '📚', score: clamp(academicHealth) },
+    { key: 'sleep', label: 'Sleep Health', icon: '😴', score: clamp(sleepHealth) },
+    { key: 'lifestyle', label: 'Lifestyle Health', icon: '🥗', score: clamp(lifestyleHealth) },
+    { key: 'mental', label: 'Mental Well-being', icon: '🧠', score: clamp(mentalHealth) },
+    { key: 'financial', label: 'Financial Well-being', icon: '💰', score: clamp(financialHealth) },
+  ];
+
+  const overall = Math.round(
+    categories.reduce((sum, c) => sum + c.score, 0) / categories.length
+  );
+
+  return { overall, categories };
+};
