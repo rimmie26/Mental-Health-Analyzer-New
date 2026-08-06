@@ -27,7 +27,12 @@ exports.getGoals = async (req, res) => {
       });
     }
 
-    const totalXP = goals.reduce((sum, g) => sum + g.xp, 0);
+    const totalXP = Math.round(
+      goals.reduce((sum, g) => {
+      const earned = (g.completed / g.target) * g.xp;
+      return sum + earned;
+      }, 0)
+    );
 
     res.json({ goals, totalXP });
   } catch (error) {

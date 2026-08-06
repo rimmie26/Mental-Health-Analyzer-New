@@ -10,6 +10,7 @@ import WeeklyGoals from "../dashboard/WeeklyGoals";
 import StressRadar from "../dashboard/StressRadar";
 import WhatIfSimulator from "../dashboard/WhatIfSimulator";
 import { fetchMoodHistory, fetchGoals, logMoodEntry } from '../../utils/api';
+import { getUser } from "../../utils/auth";
 
 interface HomeProps {
   onStartScreening: () => void;
@@ -37,6 +38,8 @@ export const Home: React.FC<HomeProps> = ({ onStartScreening, onLogin, onNavigat
   const [moodHistory, setMoodHistory] = useState<Array<{date: string; mood: string; emoji: string}>>([]);
   const [currentTip, setCurrentTip] = useState<{title: string, content: string, emoji: string} | null>(null);
   const [userXP, setUserXP] = useState(0);
+  const user = getUser();
+  const username = user?.name || "Friend";
 
   // Load real mood history and XP total from the backend on mount
   useEffect(() => {
@@ -364,7 +367,7 @@ export const Home: React.FC<HomeProps> = ({ onStartScreening, onLogin, onNavigat
         <div className="relative">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold">Good Morning, Alex! 👋</h2>
+              <h2 className="text-2xl font-bold">Good Morning, {username}! 👋</h2>
               <p className="text-white/90 text-sm mt-1">{todayQuote.text}</p>
               <p className="text-white/70 text-xs mt-1">— {todayQuote.author}</p>
             </div>
