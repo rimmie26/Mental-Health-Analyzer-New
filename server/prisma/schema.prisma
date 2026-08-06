@@ -1,0 +1,72 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id         String   @id @default(uuid())
+  email      String   @unique
+  password   String
+  name       String
+  role       String   @default("STUDENT") // "STUDENT" or "ADMIN"
+  department String?
+  year       Int?
+  gender     String?
+  createdAt  DateTime @default(now())
+
+  surveys         SurveyResponse[]
+  recommendations Recommendation[]
+  goals           Goal[]
+  moodEntries     MoodEntry[]
+}
+
+model Goal {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  completed Int      @default(0)
+  target    Int
+  xp        Int
+  createdAt DateTime @default(now())
+}
+
+model MoodEntry {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  date      String   // "YYYY-MM-DD", one entry per user per date
+  mood      String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, date])
+}
+
+model SurveyResponse {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id])
+  academicPressure Int
+  sleepHours       Float
+  financialStress  Int
+  socialSupport    Int
+  overallRisk      String   // "LOW", "MEDIUM", "HIGH"
+  riskScore        Float
+  topRootCauses    String   // Stored as JSON string
+  createdAt        DateTime @default(now())
+}
+
+model Recommendation {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  rootCause   String
+  actionPlan  String   // Stored as JSON string
+  isCompleted Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
