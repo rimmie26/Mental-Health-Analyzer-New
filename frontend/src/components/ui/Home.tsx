@@ -7,6 +7,7 @@ import { Profile } from './Profile';
 import MoodGarden from './MoodGarden';
 import AIInsights from './AIInsights';
 import WeeklyGoals from "../dashboard/WeeklyGoals";
+import StressRadar from "../dashboard/StressRadar";
 import { fetchMoodHistory, logMoodEntry, fetchGoals } from '../../utils/api';
 
 interface HomeProps {
@@ -481,6 +482,9 @@ export const Home: React.FC<HomeProps> = ({ onStartScreening, onLogin, onNavigat
         🌱 Keep going! Every small step you take today builds a healthier tomorrow.
         </p>
       </div>
+
+      {/* Stress Radar */}
+      <StressRadar />
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
