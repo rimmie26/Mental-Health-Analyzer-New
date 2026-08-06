@@ -1,0 +1,8 @@
+// Must be mounted AFTER authenticateToken - relies on req.user.role,
+// which comes from the JWT payload signed in authController.js.
+module.exports = (req, res, next) => {
+  if (!req.user || req.user.role !== 'ADMIN') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  next();
+};
