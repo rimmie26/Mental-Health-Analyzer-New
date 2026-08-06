@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Hero from './components/ui/animated-shader-hero';
 import Home from './components/ui/Home';
 import Login from './components/ui/Login';
@@ -40,6 +40,19 @@ function App() {
     setCurrentPage('hero');
   };
 
+  // If a request comes back 401/expired-403, the interceptor already cleared local storage -
+  // this makes sure the visible UI (Navbar, dashboard) reflects that immediately instead of
+  // looking logged in while every API call silently fails in the background.
+  useEffect(() => {
+    const onExpired = () => {
+      setUser(null);
+      setPostLoginPage('home');
+      setCurrentPage('login');
+    };
+    window.addEventListener('auth:expired', onExpired);
+    return () => window.removeEventListener('auth:expired', onExpired);
+  }, []);
+
   const handleBack = () => {
     setCurrentPage('hero');
   };
@@ -78,7 +91,7 @@ function App() {
 
   // Home Page (Dashboard)
   if (currentPage === 'home') {
-    return <Home onStartScreening={handleStartScreening} onLogin={handleLogin} onNavigate={handleNavigate} />;
+    return <Home onStartScreening={handleStartScreening} onLogin={handleLogin} onNavigate={handleNavigate} onLogout={handleLogout} />;
   }
 
   // Screening Page
@@ -112,7 +125,7 @@ function App() {
           },
           secondary: {
             text: "Go to Dashboard",
-            onClick: () => setCurrentPage('home')
+            onClick: () => goToProtected('home')
           }
         }}
         showNavbar={true}

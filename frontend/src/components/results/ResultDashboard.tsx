@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 
 interface ResultsDashboardProps {
   data: any;
@@ -64,15 +64,21 @@ export const ResultsDashboard = ({ data, onReset }: ResultsDashboardProps) => {
         </div>
 
         <div className="bg-white/80 rounded-2xl p-6 shadow-md">
-          <h3 className="text-lg font-semibold mb-4">Stress Contributors</h3>
+          <h3 className="text-lg font-semibold mb-4">Stress Radar</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stressFactors} layout="vertical">
-                <XAxis type="number" domain={[0, 100]} hide />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} />
+              <RadarChart data={stressFactors} outerRadius="75%">
+                <PolarGrid stroke="#d4a37333" />
+                <PolarAngleAxis dataKey="name" tick={{ fontSize: 12, fill: '#3d3d3d' }} />
+                <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
+                <Radar
+                  dataKey="value"
+                  stroke="#d4a373"
+                  fill="#d4a373"
+                  fillOpacity={0.45}
+                />
                 <Tooltip />
-                <Bar dataKey="value" fill="#d4a373" radius={[0, 8, 8, 0]} />
-              </BarChart>
+              </RadarChart>
             </ResponsiveContainer>
           </div>
         </div>

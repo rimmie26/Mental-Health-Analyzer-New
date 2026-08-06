@@ -13,7 +13,7 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 5000,
+  timeout: 20000,
 });
 
 // Attach the JWT (if we have one) to every outgoing request
@@ -30,9 +30,16 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     console.warn('API Error:', error.response?.data || error.message);
-    if (error.response?.status === 401 || error.response?.status === 403) {
-      // Token missing/expired - clear stale auth so the app knows to show login again
+    const status = error.response?.status;
+    const message = error.response?.data?.error;
+    // 401 = no token at all. 403 with this specific message = token invalid/expired.
+    // A 403 from requireAdmin ("Admin access required") is a valid user lacking permission,
+    // NOT an expired session - must not log them out for that.
+    const isAuthFailure = status === 401 || (status === 403 && message === 'Invalid or expired token');
+    if (isAuthFailure) {
       clearAuth();
+      // Tell the React app immediately (it won't otherwise know local storage changed)
+      window.dispatchEvent(new CustomEvent('auth:expired'));
     }
     return Promise.reject(error);
   }
@@ -72,6 +79,11 @@ export const getRecommendationsReal = async () => {
   return response.data; // { overallRisk, riskScore, actionPlan }
 };
 
+export const fetchSurveyHistory = async () => {
+  const response = await api.get('/survey/history');
+  return response.data; // SurveyResponse[], newest first
+};
+
 // ===== Weekly Goals =====
 export const fetchGoals = async () => {
   const response = await api.get('/goals');
@@ -83,6 +95,23 @@ export const completeGoal = async (id: string) => {
   return response.data; // { goal }
 };
 
+// ===== Exercises =====
+export const completeExercise = async (exerciseId: number, exerciseTitle: string) => {
+  const response = await api.post('/exercises/complete', { exerciseId, exerciseTitle });
+  return response.data; // { completion }
+};
+
+export const fetchExerciseHistory = async () => {
+  const response = await api.get('/exercises/history');
+  return response.data; // { completions, totalCompleted, totalXP }
+};
+
+// ===== Progress (real, backend-computed) =====
+export const fetchProgress = async () => {
+  const response = await api.get('/progress');
+  return response.data; // { dayStreak, consistencyScore, exercisesDone, totalXP, weeklyActivity }
+};
+
 // ===== Mood Garden =====
 export const fetchMoodHistory = async () => {
   const response = await api.get('/mood');
@@ -92,6 +121,25 @@ export const fetchMoodHistory = async () => {
 export const logMoodEntry = async (mood: string, date?: string) => {
   const response = await api.post('/mood', { mood, date });
   return response.data; // { entry }
+};
+
+// ===== Admin Analytics (Ritika's dashboard) =====
+// Backend enforces role: 'ADMIN' on all of these - a non-admin token gets a 403.
+export const fetchAdminBreakdown = async (groupBy: 'department' | 'year' | 'gender') => {
+  const response = await api.get('/admin/breakdown', { params: { groupBy } });
+  return response.data; // { groupBy, groups: [{ group, studentCount, studentsWithSurvey, avgRiskScore, riskDistribution }] }
+};
+
+export const fetchAdminCorrelation = async () => {
+  const response = await api.get('/admin/correlation');
+  return response.data; // { sampleSize, variables, labels, matrix }
+};
+
+// Returns a Blob - caller is responsible for turning it into a download
+// (can't just link to the URL directly since the endpoint needs the auth header).
+export const fetchAdminCSVBlob = async (): Promise<Blob> => {
+  const response = await api.get('/admin/export/csv', { responseType: 'blob' });
+  return response.data;
 };
 
 // Mock data for when backend is not available

@@ -1,4 +1,5 @@
 const prisma = require('../config/prisma');
+const { logActivity } = require('../utils/activity');
 
 exports.getMoodHistory = async (req, res) => {
   try {
@@ -30,6 +31,8 @@ exports.logMood = async (req, res) => {
       update: { mood },
       create: { userId, date: entryDate, mood },
     });
+
+    await logActivity(userId, 'MOOD', entryDate);
 
     res.status(201).json({ entry });
   } catch (error) {

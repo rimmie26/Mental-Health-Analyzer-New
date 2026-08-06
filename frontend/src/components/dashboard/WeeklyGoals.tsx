@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { fetchGoals, completeGoal as completeGoalApi } from "../../utils/api";
+import { fetchGoals, completeGoal as completeGoalApi, fetchProgress } from "../../utils/api";
 
 type Goal = {
   id: string;
@@ -13,6 +13,7 @@ type Goal = {
 const WeeklyGoals = () => {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [totalXP, setTotalXP] = useState(0);
+  const [dayStreak, setDayStreak] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,6 +30,11 @@ const WeeklyGoals = () => {
         setError(err.response?.status === 401 ? 'Log in to track your goals.' : 'Could not load goals.');
       })
       .finally(() => { if (!cancelled) setLoading(false); });
+
+    fetchProgress()
+      .then((res) => { if (!cancelled) setDayStreak(res.dayStreak); })
+      .catch(() => {}); // non-critical, footer just shows 0
+
     return () => { cancelled = true; };
   }, []);
 
@@ -73,7 +79,7 @@ const WeeklyGoals = () => {
         </h2>
 
         <span className="text-sm text-gray-500">
-          Week 3
+          This Week
         </span>
       </div>
 
@@ -139,7 +145,7 @@ const WeeklyGoals = () => {
       <div className="border-t pt-4 mt-2 flex justify-between text-sm">
 
         <div>
-          🔥 Streak <b>6 Days</b>
+          🔥 Streak <b>{dayStreak} Days</b>
         </div>
 
         <div>

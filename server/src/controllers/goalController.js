@@ -1,4 +1,5 @@
 const prisma = require('../config/prisma');
+const { logActivity } = require('../utils/activity');
 
 // Default set of goals seeded for a user the first time they load their goals
 const DEFAULT_GOALS = [
@@ -54,6 +55,8 @@ exports.completeGoalStep = async (req, res) => {
       where: { id },
       data: { completed: Math.min(goal.completed + 1, goal.target) },
     });
+
+    await logActivity(userId, 'GOAL');
 
     res.json({ goal: updated });
   } catch (error) {
