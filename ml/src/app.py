@@ -15,6 +15,8 @@ the `src/` package):
 Then POST to http://localhost:8000/analyze
 """
 
+import os
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field, confloat, conint
@@ -34,13 +36,22 @@ app = FastAPI(
     description=API_DESCRIPTION,
 )
 
-# Lets your frontend call this API from the browser. "*" is fine
-# for local development; once you deploy, replace it with your
-# actual site's origin (e.g. "https://yoursite.com") so random
-# sites can't hit this endpoint from a user's browser.
+# Only the Express server calls this API (never the browser directly),
+# so CORS can be locked down to just that origin. Override with the
+# CORS_ORIGINS env var (comma-separated) if Express runs somewhere
+# other than the default dev port. Once this service is deployed
+# behind Express, it doesn't need to be reachable from the public
+# internet at all - only from Express's host.
+_default_origins = "http://localhost:4000,http://127.0.0.1:4000"
+allowed_origins = [
+    origin.strip()
+    for origin in os.environ.get("CORS_ORIGINS", _default_origins).split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

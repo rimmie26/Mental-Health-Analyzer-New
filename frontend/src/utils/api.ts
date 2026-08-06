@@ -2,8 +2,9 @@ import axios from 'axios';
 import type { ScreenerData } from '../types';  // ← Fixed: use 'type' keyword
 import { getToken, clearAuth } from './auth';
 
-// Use environment variable with fallback. Backend (server/src/index.js) listens on 8000.
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+// Use environment variable with fallback. Backend (server/src/index.js) listens on 4000
+// locally (see server/.env) - 8000 is reserved for the FastAPI ML service it proxies to.
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
 // Only use mock mode when explicitly enabled - was previously "always true" due to a `|| true` bug
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
@@ -61,6 +62,112 @@ export const registerUser = async (data: {
 export const loginUser = async (email: string, password: string) => {
   const response = await api.post('/auth/login', { email, password });
   return response.data; // { message, token, user }
+};
+
+// ===== ML Analysis (real backend, proxied to FastAPI by server/src/controllers/analyzeController.js) =====
+
+// Shape returned by ml/src/util.py's enrich_report(), as passed through
+// verbatim by the Express proxy.
+export interface AnalyzeIndicator {
+  score: number;
+  label: string;
+}
+
+export interface AnalyzeWeakestIndicator {
+  category: string;
+  score: number;
+  label: string;
+}
+
+export interface AnalyzeResponse {
+  prediction: string;
+  probability: number;
+  overall_wellbeing_score: number;
+  overall_wellbeing_label: string;
+  health_indicators: Record<string, AnalyzeIndicator>;
+  weakest_indicators: AnalyzeWeakestIndicator[];
+  recommendations: string[];
+  disclaimer: string;
+}
+
+// Category name (as returned by the ML service) -> the icon/key this app
+// already uses for that category (see WellbeingCategory below).
+const CATEGORY_META: Record<string, { key: string; icon: string }> = {
+  'Academic Health': { key: 'academic', icon: '📚' },
+  'Sleep Health': { key: 'sleep', icon: '😴' },
+  'Lifestyle Health': { key: 'lifestyle', icon: '🥗' },
+  'Mental Well-being': { key: 'mental', icon: '🧠' },
+  'Financial Well-being': { key: 'financial', icon: '💰' },
+};
+
+// Maps this app's ScreenerData field names to the exact field names/values
+// the ML API expects (see ml/src/app.py's StudentInput aliases and
+// ml/src/preprocessing.py's category maps). Sent as-is via the alias names
+// since the API accepts either spelling (`populate_by_name=True`).
+export const analyzeStudent = async (data: ScreenerData): Promise<AnalyzeResponse> => {
+  const payload = {
+    Gender: data.gender,
+    Age: data.age,
+    'Academic Pressure': data.academicPressure,
+    'Work Pressure': data.workPressure,
+    CGPA: data.cgpa,
+    'Study Satisfaction': data.studySatisfaction,
+    'Job Satisfaction': data.jobSatisfaction,
+    'Sleep Duration': data.sleepDuration,
+    'Dietary Habits': data.dietaryHabits,
+    Degree: data.degree,
+    'Have you ever had suicidal thoughts ?': data.suicidalThoughts,
+    'Work/Study Hours': data.workStudyHours,
+    'Financial Stress': data.financialStress,
+    'Family History of Mental Illness': data.familyHistory,
+  };
+
+  const response = await api.post('/analyze', payload);
+  return response.data;
+};
+
+// ----- Persisting the latest real analysis for the dashboard -----
+// The /analyze call itself is stateless (no auth, nothing saved server-side),
+// so the dashboard has no other way to know "what did the last screening
+// say" - stash it locally the same way auth.ts stashes the session, and
+// read it back wherever the dashboard needs real numbers instead of demo data.
+const LATEST_ANALYSIS_KEY = 'mindwell_latest_analysis';
+
+export const saveLatestAnalysis = (report: AnalyzeResponse) => {
+  localStorage.setItem(LATEST_ANALYSIS_KEY, JSON.stringify({ ...report, _savedAt: new Date().toISOString() }));
+};
+
+export const getLatestAnalysis = (): (AnalyzeResponse & { _savedAt?: string }) | null => {
+  const raw = localStorage.getItem(LATEST_ANALYSIS_KEY);
+  return raw ? JSON.parse(raw) : null;
+};
+
+// Converts the ML API's report shape into the {overall, categories,
+// recommendations, ...} shape ResultsDashboard renders, so the dashboard
+// doesn't need to know about two different response formats.
+export const toDashboardShape = (report: AnalyzeResponse) => {
+  const categories: WellbeingCategory[] = Object.entries(report.health_indicators).map(
+    ([category, indicator]) => {
+      const meta = CATEGORY_META[category] ?? { key: category.toLowerCase(), icon: '📊' };
+      return {
+        key: meta.key,
+        label: category,
+        icon: meta.icon,
+        score: Math.round(indicator.score),
+      };
+    }
+  );
+
+  return {
+    overall: Math.round(report.overall_wellbeing_score),
+    overallLabel: report.overall_wellbeing_label,
+    categories,
+    prediction: report.prediction,
+    probability: report.probability,
+    weakestIndicators: report.weakest_indicators,
+    recommendations: report.recommendations,
+    disclaimer: report.disclaimer,
+  };
 };
 
 // ===== Survey / Recommendations (real backend) =====

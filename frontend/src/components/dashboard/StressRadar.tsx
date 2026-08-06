@@ -7,20 +7,7 @@ import {
   PolarRadiusAxis,
   ResponsiveContainer,
 } from "recharts";
-
-const data = [
-  { subject: "Stress", value: 75 },
-  { subject: "Anxiety", value: 60 },
-  { subject: "Sleep", value: 85 },
-  { subject: "Focus", value: 70 },
-  { subject: "Mood", value: 90 },
-  { subject: "Energy", value: 80 },
-];
-
-// Calculate overall wellness score
-const overallScore = Math.round(
-  data.reduce((sum, item) => sum + item.value, 0) / data.length
-);
+import { getLatestAnalysis } from "../../utils/api";
 
 const getStatus = (score: number) => {
   if (score >= 85)
@@ -47,9 +34,57 @@ const getStatus = (score: number) => {
   };
 };
 
-const status = getStatus(overallScore);
+// Shortened labels for the radar's angle axis - the real category names
+// ("Financial Well-being") are wordy for a 6-point chart at this size.
+const SHORT_LABEL: Record<string, string> = {
+  "Academic Health": "Academic",
+  "Sleep Health": "Sleep",
+  "Lifestyle Health": "Lifestyle",
+  "Mental Well-being": "Mental",
+  "Financial Well-being": "Financial",
+};
 
 const StressRadar = () => {
+  const analysis = getLatestAnalysis();
+
+  // No screening completed yet - show that honestly instead of a chart
+  // full of numbers nobody actually reported.
+  if (!analysis) {
+    return (
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h2 className="text-xl font-bold text-gray-800">
+              🧠 Stress Radar
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">
+              AI-powered mental wellness analysis
+            </p>
+          </div>
+        </div>
+        <div className="bg-amber-50 border border-amber-100 rounded-xl p-6 text-center">
+          <p className="text-gray-600 text-sm">
+            Complete your first screening to see your wellness radar here.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const data = Object.entries(analysis.health_indicators).map(
+    ([category, indicator]) => ({
+      subject: SHORT_LABEL[category] ?? category,
+      fullLabel: category,
+      value: Math.round(indicator.score),
+    })
+  );
+
+  const overallScore = Math.round(analysis.overall_wellbeing_score);
+  const status = getStatus(overallScore);
+
+  const highest = data.reduce((a, b) => (b.value > a.value ? b : a), data[0]);
+  const lowest = data.reduce((a, b) => (b.value < a.value ? b : a), data[0]);
+
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-all">
 
@@ -60,7 +95,7 @@ const StressRadar = () => {
             🧠 Stress Radar
           </h2>
           <p className="text-sm text-gray-500 mt-1">
-            AI-powered mental wellness analysis
+            Based on your last screening
           </p>
         </div>
 
@@ -142,21 +177,21 @@ const StressRadar = () => {
         <div className="bg-green-50 rounded-lg p-2">
           <p className="text-xs text-gray-500">Highest</p>
           <p className="font-semibold text-green-600">
-            Mood
+            {highest.fullLabel}
           </p>
         </div>
 
         <div className="bg-orange-50 rounded-lg p-2">
           <p className="text-xs text-gray-500">Lowest</p>
           <p className="font-semibold text-orange-600">
-            Anxiety
+            {lowest.fullLabel}
           </p>
         </div>
 
         <div className="bg-blue-50 rounded-lg p-2">
-          <p className="text-xs text-gray-500">Trend</p>
+          <p className="text-xs text-gray-500">Assessment</p>
           <p className="font-semibold text-blue-600">
-            Improving
+            {analysis.prediction}
           </p>
         </div>
 

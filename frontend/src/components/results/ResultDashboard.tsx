@@ -1,8 +1,9 @@
 import { motion } from 'framer-motion';
 
-interface ActionPlanItem {
-  rootCause: string;
-  actionItems: string[];
+interface WeakestIndicator {
+  category: string;
+  score: number;
+  label: string;
 }
 
 interface WellbeingCategory {
@@ -15,19 +16,19 @@ interface WellbeingCategory {
 interface ResultsDashboardProps {
   data: any;
   onReset: () => void;
+  submitError?: string | null;
 }
 
-// Root causes come from the backend as short labels (see recommendationController.js's
-// ACTION_MAP keys). Map each to an icon/color so "why you're at risk" reads as a proper
-// diagnosis section rather than a plain list.
-const ROOT_CAUSE_STYLE: Record<string, { icon: string; color: string; bg: string }> = {
-  'Poor Sleep': { icon: 'fa-moon', color: 'text-blue-600', bg: 'bg-blue-50' },
-  'Academic Pressure': { icon: 'fa-book', color: 'text-amber-600', bg: 'bg-amber-50' },
-  'Financial Stress': { icon: 'fa-coins', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  'Loneliness': { icon: 'fa-user-group', color: 'text-purple-600', bg: 'bg-purple-50' },
-  'General Academic Stress': { icon: 'fa-triangle-exclamation', color: 'text-orange-600', bg: 'bg-orange-50' },
+// Category name -> icon/color, for the weakest-indicators "why" section.
+// Matches the keys/icons produced by utils/api.ts's toDashboardShape.
+const CATEGORY_STYLE: Record<string, { color: string; bg: string }> = {
+  'Academic Health': { color: 'text-amber-600', bg: 'bg-amber-50' },
+  'Sleep Health': { color: 'text-blue-600', bg: 'bg-blue-50' },
+  'Lifestyle Health': { color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  'Mental Well-being': { color: 'text-purple-600', bg: 'bg-purple-50' },
+  'Financial Well-being': { color: 'text-orange-600', bg: 'bg-orange-50' },
 };
-const DEFAULT_ROOT_CAUSE_STYLE = { icon: 'fa-circle-exclamation', color: 'text-gray-600', bg: 'bg-gray-50' };
+const DEFAULT_CATEGORY_STYLE = { color: 'text-gray-600', bg: 'bg-gray-50' };
 
 // Slider color by score band (higher = healthier)
 const scoreColor = (score: number) => {
@@ -36,11 +37,15 @@ const scoreColor = (score: number) => {
   return { bar: 'from-red-400 to-red-500', text: 'text-red-600' };
 };
 
-export const ResultsDashboard = ({ data, onReset }: ResultsDashboardProps) => {
+export const ResultsDashboard = ({ data, onReset, submitError }: ResultsDashboardProps) => {
   const { recommendations } = data;
-  // Only present when the survey was actually submitted to the backend (see useScreener.ts) -
-  // the client-only fallback estimate has no rootCause -> actionItems mapping to show.
-  const actionPlan: ActionPlanItem[] | undefined = data.actionPlan;
+  // Only present when the ML service actually answered (see useScreener.ts's
+  // toDashboardShape) - the client-only fallback estimate has no per-category
+  // weakest-indicator breakdown to show.
+  const weakestIndicators: WeakestIndicator[] | undefined = data.weakestIndicators;
+  const prediction: string | undefined = data.prediction;
+  const probability: number | undefined = data.probability;
+  const disclaimer: string | undefined = data.disclaimer;
 
   // Wellbeing data: prefer a precomputed shape from the backend/calculateWellbeing,
   // fall back gracefully if only the old risk-shaped data is present.
@@ -67,6 +72,13 @@ export const ResultsDashboard = ({ data, onReset }: ResultsDashboardProps) => {
         </button>
       </div>
 
+      {submitError && (
+        <div className="mb-6 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700 flex items-start gap-2">
+          <i className="fas fa-triangle-exclamation mt-0.5"></i>
+          <span>{submitError}</span>
+        </div>
+      )}
+
       {/* Overall Score */}
       <div className="bg-gradient-to-r from-pastel-yellow/30 to-pastel-blue/30 rounded-2xl p-6 mb-8">
         <div className="flex items-center justify-between mb-3">
@@ -77,6 +89,12 @@ export const ResultsDashboard = ({ data, onReset }: ResultsDashboardProps) => {
             <p className={`text-4xl font-bold mt-1 ${overallColor.text}`}>
               {overall}<span className="text-xl text-charcoal/40">/100</span>
             </p>
+            {prediction && (
+              <p className="text-xs text-charcoal/50 mt-1">
+                Model assessment: <span className="font-medium">{prediction}</span>
+                {typeof probability === 'number' && ` (${probability}% confidence)`}
+              </p>
+            )}
           </div>
           <div className="w-20 h-20 rounded-full bg-white/60 flex items-center justify-center border-4 border-dark-yellow text-2xl">
             {overall >= 70 ? '😊' : overall >= 45 ? '🤔' : '😟'}
@@ -137,52 +155,46 @@ export const ResultsDashboard = ({ data, onReset }: ResultsDashboardProps) => {
         </div>
       )}
 
-      {actionPlan && actionPlan.length > 0 ? (
-        <div className="bg-white/80 rounded-2xl p-6 shadow-md">
+      {weakestIndicators && weakestIndicators.length > 0 && (
+        <div className="bg-white/80 rounded-2xl p-6 shadow-md mb-8">
           <h3 className="text-lg font-semibold mb-1">
             <i className="fas fa-magnifying-glass text-dark-yellow mr-2"></i> Why you're at risk
           </h3>
           <p className="text-sm text-charcoal/60 mb-4">
-            Your recommendations below are matched to the specific factors driving your score.
+            These are your lowest-scoring areas - the recommendations below are matched to them.
           </p>
-          <div className="space-y-4">
-            {actionPlan.map((item, i) => {
-              const style = ROOT_CAUSE_STYLE[item.rootCause] || DEFAULT_ROOT_CAUSE_STYLE;
+          <div className="flex flex-wrap gap-3">
+            {weakestIndicators.map((w, i) => {
+              const style = CATEGORY_STYLE[w.category] || DEFAULT_CATEGORY_STYLE;
               return (
-                <div key={i} className={`rounded-xl p-4 ${style.bg}`}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <i className={`fas ${style.icon} ${style.color}`}></i>
-                    <span className={`font-semibold ${style.color}`}>{item.rootCause}</span>
-                  </div>
-                  <ul className="space-y-1.5">
-                    {item.actionItems.map((action, j) => (
-                      <li key={j} className="flex items-start gap-2 text-sm text-charcoal/80">
-                        <i className="fas fa-check-circle text-dark-yellow mt-0.5"></i>
-                        <span>{action}</span>
-                      </li>
-                    ))}
-                  </ul>
+                <div key={i} className={`rounded-xl px-4 py-2 ${style.bg}`}>
+                  <span className={`font-semibold text-sm ${style.color}`}>{w.category}</span>
+                  <span className="text-xs text-charcoal/50 ml-2">{w.score}/100 · {w.label}</span>
                 </div>
               );
             })}
           </div>
         </div>
-      ) : (
-        recommendations && recommendations.length > 0 && (
-          <div className="bg-gradient-to-r from-pastel-yellow/20 to-pastel-blue/20 rounded-2xl p-6">
-            <h3 className="text-lg font-semibold mb-3">
-              <i className="fas fa-lightbulb text-dark-yellow mr-2"></i> Recommendations
-            </h3>
-            <ul className="space-y-2">
-              {recommendations.map((rec: string, i: number) => (
-                <li key={i} className="flex items-start gap-2">
-                  <i className="fas fa-check-circle text-dark-yellow mt-1"></i>
-                  <span>{rec}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )
+      )}
+
+      {recommendations && recommendations.length > 0 && (
+        <div className="bg-gradient-to-r from-pastel-yellow/20 to-pastel-blue/20 rounded-2xl p-6">
+          <h3 className="text-lg font-semibold mb-3">
+            <i className="fas fa-lightbulb text-dark-yellow mr-2"></i> Recommendations
+          </h3>
+          <ul className="space-y-2">
+            {recommendations.map((rec: string, i: number) => (
+              <li key={i} className="flex items-start gap-2">
+                <i className="fas fa-check-circle text-dark-yellow mt-1"></i>
+                <span>{rec}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {disclaimer && (
+        <p className="text-xs text-charcoal/40 text-center mt-6 italic">{disclaimer}</p>
       )}
     </motion.div>
   );
