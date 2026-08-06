@@ -1,11 +1,12 @@
 import axios from 'axios';
 import type { ScreenerData } from '../types';  // ← Fixed: use 'type' keyword
+import { getToken, clearAuth } from './auth';
 
-// Use environment variable with fallback
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Use environment variable with fallback. Backend (server/src/index.js) listens on 8000.
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
-// Check if we should use mock mode (when backend is not available)
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true' || true; // Default to true
+// Only use mock mode when explicitly enabled - was previously "always true" due to a `|| true` bug
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -15,14 +16,124 @@ export const api = axios.create({
   timeout: 5000,
 });
 
+// Attach the JWT (if we have one) to every outgoing request
+api.interceptors.request.use((config) => {
+  const token = getToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 // Add response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     console.warn('API Error:', error.response?.data || error.message);
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      // Token missing/expired - clear stale auth so the app knows to show login again
+      clearAuth();
+    }
     return Promise.reject(error);
   }
 );
+
+// ===== Auth =====
+export const registerUser = async (data: {
+  email: string;
+  password: string;
+  name: string;
+  department?: string;
+  year?: number;
+  gender?: string;
+}) => {
+  const response = await api.post('/auth/register', data);
+  return response.data; // { message, token, user }
+};
+
+export const loginUser = async (email: string, password: string) => {
+  const response = await api.post('/auth/login', { email, password });
+  return response.data; // { message, token, user }
+};
+
+// ===== Survey / Recommendations (real backend) =====
+export const submitSurveyReal = async (data: {
+  academicPressure: number;
+  sleepHours: number;
+  financialStress: number;
+  socialSupport: number;
+}) => {
+  const response = await api.post('/survey/submit', data);
+  return response.data; // { message, survey }
+};
+
+export const getRecommendationsReal = async () => {
+  const response = await api.get('/recommendations');
+  return response.data; // { overallRisk, riskScore, actionPlan }
+};
+
+export const fetchSurveyHistory = async () => {
+  const response = await api.get('/survey/history');
+  return response.data; // SurveyResponse[], newest first
+};
+
+// ===== Weekly Goals =====
+export const fetchGoals = async () => {
+  const response = await api.get('/goals');
+  return response.data; // { goals, totalXP }
+};
+
+export const completeGoal = async (id: string) => {
+  const response = await api.patch(`/goals/${id}/complete`);
+  return response.data; // { goal }
+};
+
+// ===== Exercises =====
+export const completeExercise = async (exerciseId: number, exerciseTitle: string) => {
+  const response = await api.post('/exercises/complete', { exerciseId, exerciseTitle });
+  return response.data; // { completion }
+};
+
+export const fetchExerciseHistory = async () => {
+  const response = await api.get('/exercises/history');
+  return response.data; // { completions, totalCompleted, totalXP }
+};
+
+// ===== Progress (real, backend-computed) =====
+export const fetchProgress = async () => {
+  const response = await api.get('/progress');
+  return response.data; // { dayStreak, consistencyScore, exercisesDone, totalXP, weeklyActivity }
+};
+
+// ===== Mood Garden =====
+export const fetchMoodHistory = async () => {
+  const response = await api.get('/mood');
+  return response.data; // MoodEntry[]
+};
+
+export const logMoodEntry = async (mood: string, date?: string) => {
+  const response = await api.post('/mood', { mood, date });
+  return response.data; // { entry }
+};
+
+// ===== Admin Analytics (Ritika's dashboard) =====
+// Backend enforces role: 'ADMIN' on all of these - a non-admin token gets a 403.
+export const fetchAdminBreakdown = async (groupBy: 'department' | 'year' | 'gender') => {
+  const response = await api.get('/admin/breakdown', { params: { groupBy } });
+  return response.data; // { groupBy, groups: [{ group, studentCount, studentsWithSurvey, avgRiskScore, riskDistribution }] }
+};
+
+export const fetchAdminCorrelation = async () => {
+  const response = await api.get('/admin/correlation');
+  return response.data; // { sampleSize, variables, labels, matrix }
+};
+
+// Returns a Blob - caller is responsible for turning it into a download
+// (can't just link to the URL directly since the endpoint needs the auth header).
+export const fetchAdminCSVBlob = async (): Promise<Blob> => {
+  const response = await api.get('/admin/export/csv', { responseType: 'blob' });
+  return response.data;
+};
 
 // Mock data for when backend is not available
 const mockAnalysis = {

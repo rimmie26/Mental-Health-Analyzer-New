@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Exercise1 from './Exercise1';
 import Exercise2 from './Exercise2';
 import Exercise3 from './Exercise3';
 import Exercise4 from './Exercise4';
+import { completeExercise, fetchExerciseHistory } from '../../utils/api';
 
-interface Exercise {
+export interface Exercise {
   id: number;
   title: string;
   desc: string;
@@ -17,11 +18,10 @@ interface Exercise {
 }
 
 interface ExercisesProps {
-  onSelectExercise?: (exercise: Exercise) => void;
   onBack?: () => void;
 }
 
-const exercisesData: Exercise[] = [
+export const exercisesData: Exercise[] = [
   { 
     id: 1,
     title: '4-7-8 Breathing', 
@@ -91,15 +91,35 @@ const exercisesData: Exercise[] = [
 ];
 
 export const Exercises: React.FC<ExercisesProps> = ({ 
-  onSelectExercise,
   onBack 
 }) => {
   const [selectedExerciseId, setSelectedExerciseId] = useState<number | null>(null);
   const [completedExercises, setCompletedExercises] = useState<number[]>([]);
 
+  // Previously this stayed empty on every visit - completions were only
+  // ever kept in local component state and lost on navigation/reload.
+  // Load what the user has actually finished, from the database.
+  useEffect(() => {
+    fetchExerciseHistory()
+      .then((res) => {
+        const doneIds = [...new Set(res.completions.map((c: { exerciseId: number }) => c.exerciseId))];
+        setCompletedExercises(doneIds as number[]);
+      })
+      .catch((err) => console.warn('Could not load exercise history:', err));
+  }, []);
+
   const handleExerciseComplete = (id: number) => {
     if (!completedExercises.includes(id)) {
       setCompletedExercises([...completedExercises, id]);
+    }
+    const exercise = exercisesData.find((e) => e.id === id);
+    if (exercise) {
+      // This is the write that was previously missing entirely - completing
+      // an exercise here never reached the backend, so it never counted
+      // toward Progress/Profile stats or XP.
+      completeExercise(exercise.id, exercise.title).catch((err) =>
+        console.warn('Could not save exercise completion:', err)
+      );
     }
   };
 

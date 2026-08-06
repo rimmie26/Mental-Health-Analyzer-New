@@ -6,18 +6,38 @@ import About from './components/ui/About';
 import Contact from './components/ui/Contact';
 import { Questionnaire } from './components/screener/Questionnaire';
 import ChatWidget from './components/ui/ChatWidget';
+import { getUser, clearAuth, isAuthenticated } from './utils/auth';
+import type { AuthUser } from './utils/auth';
 
 type Page = 'hero' | 'home' | 'login' | 'screener' | 'about' | 'contact';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('hero');
+  const [user, setUser] = useState<AuthUser | null>(getUser());
+  // Where to send the user after a successful login (e.g. they hit "Start Screening" while logged out)
+  const [postLoginPage, setPostLoginPage] = useState<Page>('home');
+
+  const goToProtected = (page: Page) => {
+    if (isAuthenticated()) {
+      setCurrentPage(page);
+    } else {
+      setPostLoginPage(page);
+      setCurrentPage('login');
+    }
+  };
 
   const handleStartScreening = () => {
-    setCurrentPage('screener');
+    goToProtected('screener');
   };
 
   const handleLogin = () => {
     setCurrentPage('login');
+  };
+
+  const handleLogout = () => {
+    clearAuth();
+    setUser(null);
+    setCurrentPage('hero');
   };
 
   const handleBack = () => {
@@ -29,12 +49,16 @@ function App() {
   };
 
   const handleNavigate = (page: string) => {
-    setCurrentPage(page as Page);
+    if (page === 'home' || page === 'screener') {
+      goToProtected(page as Page);
+    } else {
+      setCurrentPage(page as Page);
+    }
   };
 
-  const handleLoginSubmit = (email: string, password: string) => {
-    console.log('Login submitted:', { email, password });
-    setCurrentPage('home');
+  const handleLoginSubmit = (loggedInUser: AuthUser) => {
+    setUser(loggedInUser);
+    setCurrentPage(postLoginPage);
   };
 
   // Login Page
