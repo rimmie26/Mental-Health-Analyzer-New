@@ -1,17 +1,39 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { getUser } from '../../utils/auth';
+import { fetchProgress } from '../../utils/api';
 
 interface ProfileProps {
   onBack?: () => void;
   onLogout?: () => void;
 }
 
+const calculateLevel = (xp: number) => Math.floor(xp / 100) + 1;
+
 export const Profile: React.FC<ProfileProps> = ({ onBack, onLogout }) => {
+  const user = getUser(); // real logged-in user, was previously ignored entirely
+  const [progress, setProgress] = useState<{
+    dayStreak: number;
+    exercisesDone: number;
+    totalXP: number;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchProgress()
+      .then((res) => { if (!cancelled) setProgress(res); })
+      .catch((err) => console.warn('Could not load profile stats:', err));
+    return () => { cancelled = true; };
+  }, []);
+
+  const totalXP = progress?.totalXP ?? 0;
+  const level = calculateLevel(totalXP);
+
   const userStats = [
-    { label: 'Total XP', value: '450', icon: 'fa-star', color: 'text-yellow-500' },
-    { label: 'Level', value: '12', icon: 'fa-trophy', color: 'text-amber-500' },
-    { label: 'Exercises', value: '12', icon: 'fa-check-circle', color: 'text-green-500' },
-    { label: 'Streak', value: '14', icon: 'fa-fire', color: 'text-orange-500' },
+    { label: 'Total XP', value: String(totalXP), icon: 'fa-star', color: 'text-yellow-500' },
+    { label: 'Level', value: String(level), icon: 'fa-trophy', color: 'text-amber-500' },
+    { label: 'Exercises', value: String(progress?.exercisesDone ?? 0), icon: 'fa-check-circle', color: 'text-green-500' },
+    { label: 'Streak', value: String(progress?.dayStreak ?? 0), icon: 'fa-fire', color: 'text-orange-500' },
   ];
 
   const profileMenu = [
@@ -40,17 +62,17 @@ export const Profile: React.FC<ProfileProps> = ({ onBack, onLogout }) => {
             <div className="absolute bottom-0 right-0 w-6 h-6 bg-green-400 rounded-full border-2 border-white"></div>
           </div>
           <div>
-            <h2 className="text-2xl font-bold">Alex Johnson</h2>
-            <p className="text-white/80 text-sm">alex@serenoa.ai</p>
+            <h2 className="text-2xl font-bold">{user?.name || 'Student'}</h2>
+            <p className="text-white/80 text-sm">{user?.email || ''}</p>
             <div className="flex items-center gap-3 mt-2">
               <span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-xs flex items-center gap-1">
-                🏆 Level 12
+                🏆 Level {level}
               </span>
               <span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-xs flex items-center gap-1">
-                ⭐ 450 XP
+                ⭐ {totalXP} XP
               </span>
               <span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-xs flex items-center gap-1">
-                🔥 14 Day Streak
+                🔥 {progress?.dayStreak ?? 0} Day Streak
               </span>
             </div>
           </div>
