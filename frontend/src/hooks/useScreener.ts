@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import type { ScreenerData } from '../types';
 import { steps } from '../components/screener/questions';
+import { submitSurveyReal, getRecommendationsReal } from '../utils/api';
 
 const schema = z.object({
   age: z.number().optional(),
@@ -40,6 +41,7 @@ export const useScreener = () => {
   const [showResults, setShowResults] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [analysisData, setAnalysisData] = useState<any>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -98,14 +100,54 @@ export const useScreener = () => {
     };
   };
 
-  const onSubmit = (data: any) => {
+  const riskLevelLabel = (overallRisk: string) => {
+    if (overallRisk === 'HIGH') return 'High';
+    if (overallRisk === 'MEDIUM') return 'Moderate';
+    return 'Low';
+  };
+
+  const onSubmit = async (data: any) => {
     setIsLoading(true);
-    setTimeout(() => {
-      const analysis = calculateRisk(data);
-      setAnalysisData(analysis);
+    setSubmitError(null);
+    try {
+      // Local (client-side) risk shape gives us stressFactors/riskDistribution charts,
+      // which the backend doesn't compute - we only override riskLevel/score/recommendations
+      // with the real, persisted, backend-computed values.
+      const localAnalysis = calculateRisk(data);
+
+      await submitSurveyReal({
+        academicPressure: data.academicPressure,
+        sleepHours: data.sleepHours,
+        financialStress: data.financialStress,
+        socialSupport: data.supportLevel, // backend model stores this as socialSupport (1-10)
+      });
+
+      const rec = await getRecommendationsReal();
+
+      const recommendations = rec.actionPlan.flatMap((item: any) => item.actionItems);
+
+      setAnalysisData({
+        ...localAnalysis,
+        riskLevel: riskLevelLabel(rec.overallRisk),
+        riskScore: Math.round(rec.riskScore),
+        recommendations: recommendations.length > 0 ? recommendations : localAnalysis.recommendations,
+        rootCauses: rec.actionPlan.map((item: any) => item.rootCause),
+      });
       setShowResults(true);
+    } catch (err: any) {
+      // Backend/auth failure - fall back to the local estimate so the user still gets a result,
+      // but surface the error so it's clear this wasn't saved to their account.
+      console.error('Survey submission failed, using local estimate:', err);
+      setSubmitError(
+        err.response?.status === 401
+          ? 'You need to be logged in for this to be saved to your account.'
+          : 'Could not reach the server - showing a local estimate instead.'
+      );
+      setAnalysisData(calculateRisk(data));
+      setShowResults(true);
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   return {
@@ -119,5 +161,6 @@ export const useScreener = () => {
     setShowResults,
     analysisData,
     isLoading,
+    submitError,
   };
 };

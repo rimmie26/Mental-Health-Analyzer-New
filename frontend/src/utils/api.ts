@@ -1,11 +1,12 @@
 import axios from 'axios';
 import type { ScreenerData } from '../types';  // ← Fixed: use 'type' keyword
+import { getToken, clearAuth } from './auth';
 
-// Use environment variable with fallback
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Use environment variable with fallback. Backend (server/src/index.js) listens on 8000.
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
-// Check if we should use mock mode (when backend is not available)
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true' || true; // Default to true
+// Only use mock mode when explicitly enabled - was previously "always true" due to a `|| true` bug
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -15,14 +16,83 @@ export const api = axios.create({
   timeout: 5000,
 });
 
+// Attach the JWT (if we have one) to every outgoing request
+api.interceptors.request.use((config) => {
+  const token = getToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 // Add response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     console.warn('API Error:', error.response?.data || error.message);
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      // Token missing/expired - clear stale auth so the app knows to show login again
+      clearAuth();
+    }
     return Promise.reject(error);
   }
 );
+
+// ===== Auth =====
+export const registerUser = async (data: {
+  email: string;
+  password: string;
+  name: string;
+  department?: string;
+  year?: number;
+  gender?: string;
+}) => {
+  const response = await api.post('/auth/register', data);
+  return response.data; // { message, token, user }
+};
+
+export const loginUser = async (email: string, password: string) => {
+  const response = await api.post('/auth/login', { email, password });
+  return response.data; // { message, token, user }
+};
+
+// ===== Survey / Recommendations (real backend) =====
+export const submitSurveyReal = async (data: {
+  academicPressure: number;
+  sleepHours: number;
+  financialStress: number;
+  socialSupport: number;
+}) => {
+  const response = await api.post('/survey/submit', data);
+  return response.data; // { message, survey }
+};
+
+export const getRecommendationsReal = async () => {
+  const response = await api.get('/recommendations');
+  return response.data; // { overallRisk, riskScore, actionPlan }
+};
+
+// ===== Weekly Goals =====
+export const fetchGoals = async () => {
+  const response = await api.get('/goals');
+  return response.data; // { goals, totalXP }
+};
+
+export const completeGoal = async (id: string) => {
+  const response = await api.patch(`/goals/${id}/complete`);
+  return response.data; // { goal }
+};
+
+// ===== Mood Garden =====
+export const fetchMoodHistory = async () => {
+  const response = await api.get('/mood');
+  return response.data; // MoodEntry[]
+};
+
+export const logMoodEntry = async (mood: string, date?: string) => {
+  const response = await api.post('/mood', { mood, date });
+  return response.data; // { entry }
+};
 
 // Mock data for when backend is not available
 const mockAnalysis = {

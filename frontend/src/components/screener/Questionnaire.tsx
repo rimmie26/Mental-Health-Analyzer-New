@@ -21,6 +21,7 @@ export const Questionnaire = ({ onBack }: QuestionnaireProps) => {
     setShowResults,
     analysisData,
     isLoading,
+    submitError,
   } = useScreener();
 
   if (isLoading) {
@@ -97,6 +98,11 @@ export const Questionnaire = ({ onBack }: QuestionnaireProps) => {
         <StepIndicator currentStep={step} totalSteps={steps.length} />
       </div>
 
+      {submitError && (
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
+          <i className="fas fa-triangle-exclamation mr-1"></i> {submitError}
+        </div>
+      )}
       <form onSubmit={form.handleSubmit(onSubmit)}>
         <AnimatePresence mode="wait">
           <motion.div
