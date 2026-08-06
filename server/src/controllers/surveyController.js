@@ -13,6 +13,21 @@ const calculateFallbackRootCauses = (academicPressure, sleepHours, financialStre
   return causes.length > 0 ? causes : ['General Academic Stress'];
 };
 
+const fallbackEvaluation = (academicPressure, sleepHours, financialStress, socialSupport) => {
+  const topRootCauses = calculateFallbackRootCauses(academicPressure, sleepHours, financialStress, socialSupport);
+
+  let overallRisk = 'LOW';
+  let riskScore = 25.0;
+  if (sleepHours < 5 || academicPressure >= 8 || financialStress >= 8) {
+    overallRisk = 'HIGH';
+    riskScore = 82.5;
+  } else if (sleepHours < 7 || academicPressure >= 6 || financialStress >= 6) {
+    overallRisk = 'MEDIUM';
+    riskScore = 58.0;
+  }
+  return { overallRisk, riskScore, topRootCauses };
+};
+
 exports.submitSurvey = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -27,35 +42,29 @@ exports.submitSurvey = async (req, res) => {
     let riskScore = 30.0;
     let topRootCauses = [];
 
-    // Attempt to call Prajwal's ML Service API
-    try {
-      const mlServiceUrl = process.env.ML_SERVICE_URL || 'http://localhost:5000/predict';
-      const response = await axios.post(mlServiceUrl, {
-        academicPressure,
-        sleepHours,
-        financialStress,
-        socialSupport
-      }, { timeout: 3000 });
+    const mlServiceUrl = process.env.ML_SERVICE_URL;
+    // Prajwal's ML service isn't deployed yet - skip straight to the fallback
+    // rule engine instead of waiting out a timeout on every single submission.
+    const mlConfigured = mlServiceUrl && !mlServiceUrl.includes('localhost');
 
-      overallRisk = response.data.overallRisk || 'MEDIUM';
-      riskScore = response.data.riskScore || 50.0;
-      topRootCauses = response.data.topRootCauses || [];
-    } catch (mlError) {
-      console.log('⚠️ ML Service unreachable. Falling back to internal rule engine.');
-      
-      // Fallback evaluation
-      topRootCauses = calculateFallbackRootCauses(academicPressure, sleepHours, financialStress, socialSupport);
-      
-      if (sleepHours < 5 || academicPressure >= 8 || financialStress >= 8) {
-        overallRisk = 'HIGH';
-        riskScore = 82.5;
-      } else if (sleepHours < 7 || academicPressure >= 6 || financialStress >= 6) {
-        overallRisk = 'MEDIUM';
-        riskScore = 58.0;
-      } else {
-        overallRisk = 'LOW';
-        riskScore = 25.0;
+    if (mlConfigured) {
+      try {
+        const response = await axios.post(mlServiceUrl, {
+          academicPressure,
+          sleepHours,
+          financialStress,
+          socialSupport
+        }, { timeout: 3000 });
+
+        overallRisk = response.data.overallRisk || 'MEDIUM';
+        riskScore = response.data.riskScore || 50.0;
+        topRootCauses = response.data.topRootCauses || [];
+      } catch (mlError) {
+        console.log('⚠️ ML Service unreachable. Falling back to internal rule engine.');
+        ({ overallRisk, riskScore, topRootCauses } = fallbackEvaluation(academicPressure, sleepHours, financialStress, socialSupport));
       }
+    } else {
+      ({ overallRisk, riskScore, topRootCauses } = fallbackEvaluation(academicPressure, sleepHours, financialStress, socialSupport));
     }
 
     // Save survey result to SQLite Database

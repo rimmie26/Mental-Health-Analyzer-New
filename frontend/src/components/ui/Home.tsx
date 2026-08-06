@@ -15,6 +15,7 @@ interface HomeProps {
   onStartScreening: () => void;
   onLogin: () => void;
   onNavigate: (page: string) => void;
+  onLogout: () => void;
 }
 
 // Gamification System
@@ -26,7 +27,7 @@ const calculateLevel = (xp: number) => {
   return { level, xp, nextLevelXP, progress, currentLevelXP };
 };
 
-export const Home: React.FC<HomeProps> = ({ onStartScreening, onLogin, onNavigate }) => {
+export const Home: React.FC<HomeProps> = ({ onStartScreening, onLogin, onNavigate, onLogout }) => {
   const [activeSection, setActiveSection] = useState('dashboard');
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [showMoodModal, setShowMoodModal] = useState(false);
@@ -422,7 +423,10 @@ export const Home: React.FC<HomeProps> = ({ onStartScreening, onLogin, onNavigat
         <div className="relative">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold">Good Morning, Alex! 👋</h2>
+              <h2 className="text-2xl font-bold">
+                {new Date().getHours() < 12 ? 'Good Morning' : new Date().getHours() < 18 ? 'Good Afternoon' : 'Good Evening'}
+                {user?.name ? `, ${user.name.split(' ')[0]}` : ''}! 👋
+              </h2>
               <p className="text-white/90 text-sm mt-1">{todayQuote.text}</p>
               <p className="text-white/70 text-xs mt-1">— {todayQuote.author}</p>
             </div>
@@ -728,7 +732,7 @@ export const Home: React.FC<HomeProps> = ({ onStartScreening, onLogin, onNavigat
     switch(activeSection) {
       case 'dashboard': return <DashboardContent />;
       case 'progress': return <ProgressContent />;
-      case 'profile': return <Profile onBack={() => setActiveSection('dashboard')} onLogout={onLogin} />;
+      case 'profile': return <Profile onBack={() => setActiveSection('dashboard')} onLogout={onLogout} />;
       case 'exercises': return <Exercises />;
       case 'admin':
         return user?.role === 'ADMIN'

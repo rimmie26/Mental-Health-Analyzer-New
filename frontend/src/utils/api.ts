@@ -13,7 +13,7 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 5000,
+  timeout: 20000,
 });
 
 // Attach the JWT (if we have one) to every outgoing request
@@ -30,9 +30,16 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     console.warn('API Error:', error.response?.data || error.message);
-    if (error.response?.status === 401 || error.response?.status === 403) {
-      // Token missing/expired - clear stale auth so the app knows to show login again
+    const status = error.response?.status;
+    const message = error.response?.data?.error;
+    // 401 = no token at all. 403 with this specific message = token invalid/expired.
+    // A 403 from requireAdmin ("Admin access required") is a valid user lacking permission,
+    // NOT an expired session - must not log them out for that.
+    const isAuthFailure = status === 401 || (status === 403 && message === 'Invalid or expired token');
+    if (isAuthFailure) {
       clearAuth();
+      // Tell the React app immediately (it won't otherwise know local storage changed)
+      window.dispatchEvent(new CustomEvent('auth:expired'));
     }
     return Promise.reject(error);
   }
