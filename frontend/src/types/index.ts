@@ -1,29 +1,20 @@
 export interface ScreenerData {
-  age?: number;
-  gender?: string;
-  city?: string;
-  department?: string;
-  year?: string;
-  degree?: string;
-  cgpa?: number;
+  gender: string;
+  age: number;
+  city: string;
+  profession: string;
+  degree: string;
+  cgpa: number;
   academicPressure: number;
   studySatisfaction: number;
-  studyHours?: number;
-  assignments?: number;
-  sleepHours: number;
-  diet?: string;
-  exercise?: string;
-  screenTime?: number;
+  workPressure: number;
+  jobSatisfaction: number;
+  sleepDuration: string;
+  dietaryHabits: string;
+  workStudyHours: number;
   financialStress: number;
-  familyHistory?: string;
-  socialSupport?: string;
-  supportLevel: number;
-  stressFactors?: string[];
-  topStressFactor?: string;
-  stressPeriod?: string;
-  emotionalExhaustion: number;
-  anxietyLevel: number;
-  mentalWellbeing: number;
+  familyHistory: string;
+  suicidalThoughts: string;
 }
 
 export interface Question {

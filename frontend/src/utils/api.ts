@@ -218,35 +218,33 @@ export const getAnalysis = async (id: string) => {
 export const calculateRisk = (data: ScreenerData) => {
   let riskScore = 0;
 
-  // Academic pressure
-  if (data.academicPressure && data.academicPressure > 7) riskScore += 15;
-  if (data.academicPressure && data.academicPressure > 9) riskScore += 10;
+  // Academic pressure (0-5 scale)
+  if (data.academicPressure && data.academicPressure > 3) riskScore += 15;
+  if (data.academicPressure && data.academicPressure >= 5) riskScore += 10;
 
-  // Study satisfaction
-  if (data.studySatisfaction && data.studySatisfaction < 4) riskScore += 15;
-  if (data.studySatisfaction && data.studySatisfaction < 2) riskScore += 10;
+  // Study satisfaction (0-5 scale, lower = worse)
+  if (data.studySatisfaction && data.studySatisfaction < 2) riskScore += 15;
+  if (data.studySatisfaction && data.studySatisfaction < 1) riskScore += 10;
 
-  // Sleep
-  if (data.sleepHours && data.sleepHours < 6) riskScore += 10;
-  if (data.sleepHours && data.sleepHours < 4) riskScore += 10;
+  // Work pressure (0-5 scale)
+  if (data.workPressure && data.workPressure > 3) riskScore += 10;
 
-  // Financial stress
-  if (data.financialStress && data.financialStress > 7) riskScore += 15;
+  // Job satisfaction (0-5 scale, lower = worse)
+  if (data.jobSatisfaction && data.jobSatisfaction < 2) riskScore += 10;
 
-  // Support level
-  if (data.supportLevel && data.supportLevel < 4) riskScore += 15;
+  // Sleep duration (now a string bucket, not a number)
+  if (data.sleepDuration === 'Less than 5 hours') riskScore += 20;
+  else if (data.sleepDuration === '5-6 hours') riskScore += 10;
 
-  // Emotional exhaustion
-  if (data.emotionalExhaustion && data.emotionalExhaustion > 3) riskScore += 10;
-  if (data.emotionalExhaustion && data.emotionalExhaustion > 4) riskScore += 5;
+  // Financial stress (1-5 scale)
+  if (data.financialStress && data.financialStress > 3) riskScore += 15;
+  if (data.financialStress && data.financialStress >= 5) riskScore += 10;
 
-  // Anxiety
-  if (data.anxietyLevel && data.anxietyLevel > 3) riskScore += 10;
-  if (data.anxietyLevel && data.anxietyLevel > 4) riskScore += 5;
+  // Family history of mental illness
+  if (data.familyHistory === 'Yes') riskScore += 5;
 
-  // Mental wellbeing
-  if (data.mentalWellbeing && data.mentalWellbeing < 5) riskScore += 10;
-  if (data.mentalWellbeing && data.mentalWellbeing < 3) riskScore += 10;
+  // Suicidal thoughts - strongest single signal
+  if (data.suicidalThoughts === 'Yes') riskScore += 25;
 
   // Cap at 100
   riskScore = Math.min(riskScore, 100);
@@ -256,12 +254,24 @@ export const calculateRisk = (data: ScreenerData) => {
   if (riskScore > 70) riskLevel = 'High';
   else if (riskScore > 40) riskLevel = 'Moderate';
 
+  // Sleep duration mapped to a rough 0-100 "poor sleep" score for the stress chart
+  const sleepStressValue = (() => {
+    switch (data.sleepDuration) {
+      case 'Less than 5 hours': return 90;
+      case '5-6 hours': return 65;
+      case '6-7 hours': return 40;
+      case '7-8 hours': return 20;
+      case 'More than 8 hours': return 10;
+      default: return 50;
+    }
+  })();
+
   // Stress factors from data
   const stressMap: { [key: string]: number } = {
-    'Academics': data.academicPressure ? Math.round((data.academicPressure / 10) * 100) : 50,
-    'Financial': data.financialStress ? Math.round((data.financialStress / 10) * 100) : 40,
-    'Relationships': data.supportLevel ? Math.round((10 - data.supportLevel) / 10 * 100) : 30,
-    'Sleep': data.sleepHours ? Math.round((8 - Math.min(data.sleepHours, 8)) / 8 * 100) : 50,
+    'Academics': data.academicPressure ? Math.round((data.academicPressure / 5) * 100) : 50,
+    'Financial': data.financialStress ? Math.round((data.financialStress / 5) * 100) : 40,
+    'Work': data.workPressure ? Math.round((data.workPressure / 5) * 100) : 30,
+    'Sleep': sleepStressValue,
   };
 
   const stressFactors = Object.entries(stressMap).map(([name, value]) => ({
@@ -271,22 +281,22 @@ export const calculateRisk = (data: ScreenerData) => {
 
   // Generate recommendations
   const recommendations = [];
-  if (data.sleepHours && data.sleepHours < 6) {
+  if (data.sleepDuration === 'Less than 5 hours' || data.sleepDuration === '5-6 hours') {
     recommendations.push('Consider establishing a consistent sleep schedule (7-9 hours recommended)');
   }
-  if (data.academicPressure && data.academicPressure > 7) {
+  if (data.academicPressure && data.academicPressure > 3) {
     recommendations.push('Take regular breaks during study sessions to reduce academic pressure');
   }
-  if (data.supportLevel && data.supportLevel < 5) {
-    recommendations.push('Reach out to support networks - you\'re not alone in this journey');
+  if (data.financialStress && data.financialStress > 3) {
+    recommendations.push('Reach out to a financial aid office or counselor about financial stress');
   }
-  if (data.emotionalExhaustion && data.emotionalExhaustion > 3) {
+  if (data.workPressure && data.workPressure > 3) {
     recommendations.push('Practice mindfulness or deep breathing exercises for 5-10 minutes daily');
   }
-  if (data.studySatisfaction && data.studySatisfaction < 4) {
+  if (data.studySatisfaction && data.studySatisfaction < 2) {
     recommendations.push('Connect with academic advisors or mentors to improve study satisfaction');
   }
-  
+
   if (recommendations.length === 0) {
     recommendations.push('Continue maintaining your healthy habits!');
     recommendations.push('Stay connected with your support network');
@@ -304,4 +314,80 @@ export const calculateRisk = (data: ScreenerData) => {
       { name: 'High', value: Math.min(Math.max(riskScore - 30, 5), 70), color: '#d4a373' },
     ],
   };
+};
+
+// ===== Wellbeing sliders (Overall Well-being Score + per-category health bars) =====
+export interface WellbeingCategory {
+  key: string;
+  label: string;
+  icon: string; // emoji, matches your email format
+  score: number; // 0-100, higher = healthier
+}
+
+export interface WellbeingResult {
+  overall: number;
+  categories: WellbeingCategory[];
+}
+
+export const calculateWellbeing = (data: ScreenerData): WellbeingResult => {
+  // --- Academic Health ---
+  const pressureScore = data.academicPressure != null
+    ? ((5 - data.academicPressure) / 5) * 50
+    : 25;
+  const satisfactionScore = data.studySatisfaction != null
+    ? (data.studySatisfaction / 5) * 50
+    : 25;
+  const academicHealth = Math.round(pressureScore + satisfactionScore);
+
+  // --- Sleep Health ---
+  const sleepMap: Record<string, number> = {
+    'Less than 5 hours': 20,
+    '5-6 hours': 45,
+    '6-7 hours': 70,
+    '7-8 hours': 95,
+    'More than 8 hours': 80,
+  };
+  const sleepHealth = data.sleepDuration ? (sleepMap[data.sleepDuration] ?? 50) : 50;
+
+  // --- Lifestyle Health ---
+  const dietMap: Record<string, number> = {
+    'Healthy': 90,
+    'Moderate': 60,
+    'Unhealthy': 25,
+  };
+  const dietScore = data.dietaryHabits ? (dietMap[data.dietaryHabits] ?? 50) : 50;
+  const hoursScore = data.workStudyHours != null
+    ? Math.max(0, 100 - Math.max(0, data.workStudyHours - 6) * 8)
+    : 60;
+  const lifestyleHealth = Math.round((dietScore + hoursScore) / 2);
+
+  // --- Mental Well-being ---
+  let mentalHealth = 70;
+  if (data.jobSatisfaction != null) {
+    mentalHealth += (data.jobSatisfaction - 2.5) * 6;
+  }
+  if (data.familyHistory === 'Yes') mentalHealth -= 10;
+  if (data.suicidalThoughts === 'Yes') mentalHealth -= 40;
+  mentalHealth = Math.round(Math.min(100, Math.max(0, mentalHealth)));
+
+  // --- Financial Well-being ---
+  const financialHealth = data.financialStress != null
+    ? Math.round(((5 - data.financialStress) / 4) * 100)
+    : 50;
+
+  const clamp = (n: number) => Math.min(100, Math.max(0, n));
+
+  const categories: WellbeingCategory[] = [
+    { key: 'academic', label: 'Academic Health', icon: '📚', score: clamp(academicHealth) },
+    { key: 'sleep', label: 'Sleep Health', icon: '😴', score: clamp(sleepHealth) },
+    { key: 'lifestyle', label: 'Lifestyle Health', icon: '🥗', score: clamp(lifestyleHealth) },
+    { key: 'mental', label: 'Mental Well-being', icon: '🧠', score: clamp(mentalHealth) },
+    { key: 'financial', label: 'Financial Well-being', icon: '💰', score: clamp(financialHealth) },
+  ];
+
+  const overall = Math.round(
+    categories.reduce((sum, c) => sum + c.score, 0) / categories.length
+  );
+
+  return { overall, categories };
 };
