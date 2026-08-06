@@ -56,10 +56,16 @@ export const Questionnaire = ({ onBack }: QuestionnaireProps) => {
   }
 
   if (showResults && analysisData) {
-    return <ResultsDashboard data={analysisData} onReset={() => {
-      setShowResults(false);
-      form.reset();
-    }} />;
+    return (
+      <ResultsDashboard
+        data={analysisData}
+        submitError={submitError}
+        onReset={() => {
+          setShowResults(false);
+          form.reset();
+        }}
+      />
+    );
   }
 
   return (

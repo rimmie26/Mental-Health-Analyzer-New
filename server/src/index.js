@@ -3,6 +3,7 @@ const cors = require('cors');
 require('dotenv').config();
 
 const authRoutes = require('./routes/authRoutes');
+const analyzeRoutes = require('./routes/analyzeRoutes');
 const surveyRoutes = require('./routes/surveyRoutes');
 const recommendationRoutes = require('./routes/recommendationRoutes');
 const goalRoutes = require('./routes/goalRoutes');
@@ -22,6 +23,7 @@ app.get('/health', (req, res) => {
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/analyze', analyzeRoutes);
 app.use('/api/survey', surveyRoutes);
 app.use('/api/recommendations', recommendationRoutes);
 app.use('/api/goals', goalRoutes);
