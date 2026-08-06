@@ -8,6 +8,8 @@ import AIInsights from './AIInsights';
 import WeeklyGoals from "../dashboard/WeeklyGoals";
 import { fetchMoodHistory, logMoodEntry, fetchProgress, fetchSurveyHistory, fetchExerciseHistory } from '../../utils/api';
 import { getUser } from '../../utils/auth';
+import StressRadar from "../dashboard/StressRadar";
+
 
 interface HomeProps {
   onStartScreening: () => void;
@@ -539,6 +541,9 @@ export const Home: React.FC<HomeProps> = ({ onStartScreening, onLogin, onNavigat
         🌱 Keep going! Every small step you take today builds a healthier tomorrow.
         </p>
       </div>
+
+      {/* Stress Radar */}
+      <StressRadar />
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
