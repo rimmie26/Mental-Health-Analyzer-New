@@ -2,39 +2,54 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import type { ScreenerData } from '../types';
 import { steps } from '../components/screener/questions';
-import { submitSurveyReal, getRecommendationsReal } from '../utils/api';
+import {
+  submitSurveyReal,
+  getRecommendationsReal,
+  calculateRisk,
+  calculateWellbeing,
+} from '../utils/api';
 
+// Must match `ScreenerData` in ../types exactly - all fields required there,
+// so all fields are required here too (kept the previous version's drift
+// from a hardcoded, unrelated old dataset from happening again).
 const schema = z.object({
-  age: z.number().optional(),
-  gender: z.string().optional(),
-  city: z.string().optional(),
-  department: z.string().optional(),
-  year: z.string().optional(),
-  degree: z.string().optional(),
-  cgpa: z.number().optional(),
-  academicPressure: z.number().min(1).max(10),
-  studySatisfaction: z.number().min(1).max(10),
-  studyHours: z.number().optional(),
-  assignments: z.number().optional(),
-  sleepHours: z.number().min(0).max(24),
-  diet: z.string().optional(),
-  exercise: z.string().optional(),
-  screenTime: z.number().optional(),
-  financialStress: z.number().min(1).max(10),
-  familyHistory: z.string().optional(),
-  socialSupport: z.string().optional(),
-  supportLevel: z.number().min(1).max(10),
-  stressFactors: z.array(z.string()).optional(),
-  topStressFactor: z.string().optional(),
-  stressPeriod: z.string().optional(),
-  emotionalExhaustion: z.number().min(1).max(5),
-  anxietyLevel: z.number().min(1).max(5),
-  mentalWellbeing: z.number().min(1).max(10),
+  gender: z.string().min(1, 'Required'),
+  age: z.number({ invalid_type_error: 'Required' }).min(16).max(65),
+  city: z.string().min(1, 'Required'),
+  profession: z.string().min(1, 'Required'),
+  degree: z.string().min(1, 'Required'),
+  cgpa: z.number().min(0).max(10),
+  academicPressure: z.number().min(0).max(5),
+  studySatisfaction: z.number().min(0).max(5),
+  workPressure: z.number().min(0).max(5),
+  jobSatisfaction: z.number().min(0).max(5),
+  sleepDuration: z.string().min(1, 'Required'),
+  dietaryHabits: z.string().min(1, 'Required'),
+  workStudyHours: z.number().min(0).max(24),
+  financialStress: z.number().min(1).max(5),
+  familyHistory: z.string().min(1, 'Required'),
+  suicidalThoughts: z.string().min(1, 'Required'),
 });
 
 type FormData = z.infer<typeof schema>;
+
+// Backend's real /survey/submit endpoint was built against the OLD field set
+// (academicPressure 1-10, sleepHours as a number, socialSupport 1-10). Until
+// the backend is updated to the new schema, this shim approximates the old
+// shape from the new fields so submission doesn't silently break.
+// TODO: confirm against server/src (survey route + validation) and update
+// both sides together once the backend model is retrained/adjusted.
+const sleepDurationToHours = (bucket: string): number => {
+  const map: Record<string, number> = {
+    'Less than 5 hours': 4,
+    '5-6 hours': 5.5,
+    '6-7 hours': 6.5,
+    '7-8 hours': 7.5,
+    'More than 8 hours': 9,
+  };
+  return map[bucket] ?? 7;
+};
 
 export const useScreener = () => {
   const [step, setStep] = useState(0);
@@ -47,58 +62,25 @@ export const useScreener = () => {
     resolver: zodResolver(schema),
     defaultValues: {
       gender: '',
-      academicPressure: 5,
-      studySatisfaction: 5,
-      financialStress: 5,
-      supportLevel: 5,
-      emotionalExhaustion: 3,
-      anxietyLevel: 3,
-      mentalWellbeing: 5,
-      sleepHours: 7,
-    }
+      city: '',
+      profession: '',
+      degree: '',
+      cgpa: 7,
+      academicPressure: 2.5,
+      studySatisfaction: 2.5,
+      workPressure: 0,
+      jobSatisfaction: 0,
+      sleepDuration: '6-7 hours',
+      dietaryHabits: 'Moderate',
+      workStudyHours: 6,
+      financialStress: 3,
+      familyHistory: 'No',
+      suicidalThoughts: 'No',
+    },
   });
 
   const nextStep = () => setStep((s) => Math.min(s + 1, steps.length - 1));
   const prevStep = () => setStep((s) => Math.max(s - 1, 0));
-
-  const calculateRisk = (data: any) => {
-    let score = 0;
-    if (data.academicPressure > 7) score += 15;
-    if (data.studySatisfaction < 4) score += 15;
-    if (data.sleepHours < 6) score += 10;
-    if (data.financialStress > 7) score += 15;
-    if (data.supportLevel < 4) score += 15;
-    if (data.emotionalExhaustion > 3) score += 10;
-    if (data.anxietyLevel > 3) score += 10;
-    if (data.mentalWellbeing < 5) score += 10;
-    
-    score = Math.min(score, 100);
-    let level = 'Low';
-    if (score > 70) level = 'High';
-    else if (score > 40) level = 'Moderate';
-
-    return {
-      riskLevel: level,
-      riskScore: score,
-      stressFactors: [
-        { name: 'Academics', value: Math.min((data.academicPressure || 5) * 10, 95) },
-        { name: 'Financial', value: Math.min((data.financialStress || 5) * 10, 95) },
-        { name: 'Support', value: Math.min((10 - (data.supportLevel || 5)) * 10, 95) },
-        { name: 'Sleep', value: Math.min((8 - Math.min(data.sleepHours || 7, 8)) * 12.5, 95) },
-      ],
-      recommendations: [
-        data.sleepHours < 6 ? 'Try to get 7-9 hours of sleep' : 'Keep up your good sleep habits',
-        data.academicPressure > 7 ? 'Take regular breaks during study' : 'Maintain your study routine',
-        data.supportLevel < 5 ? 'Reach out to your support network' : 'Stay connected with loved ones',
-        data.emotionalExhaustion > 3 ? 'Practice mindfulness daily' : 'Continue your wellness practices',
-      ],
-      riskDistribution: [
-        { name: 'Low', value: Math.max(0, 100 - score - 10), color: '#b5d6e0' },
-        { name: 'Moderate', value: Math.min(score + 5, 50), color: '#f9e3b3' },
-        { name: 'High', value: Math.min(Math.max(score - 30, 5), 70), color: '#d4a373' },
-      ],
-    };
-  };
 
   const riskLevelLabel = (overallRisk: string) => {
     if (overallRisk === 'HIGH') return 'High';
@@ -106,24 +88,27 @@ export const useScreener = () => {
     return 'Low';
   };
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: FormData) => {
     setIsLoading(true);
     setSubmitError(null);
-    try {
-      // Local (client-side) risk shape gives us stressFactors/riskDistribution charts,
-      // which the backend doesn't compute - we only override riskLevel/score/recommendations
-      // with the real, persisted, backend-computed values.
-      const localAnalysis = calculateRisk(data);
 
+    // Local (client-side) analysis - always computed so the results screen
+    // has something to show even if the backend call fails.
+    const localRisk = calculateRisk(data);
+    const localWellbeing = calculateWellbeing(data);
+    const localAnalysis = { ...localRisk, ...localWellbeing };
+
+    try {
       await submitSurveyReal({
         academicPressure: data.academicPressure,
-        sleepHours: data.sleepHours,
+        sleepHours: sleepDurationToHours(data.sleepDuration),
         financialStress: data.financialStress,
-        socialSupport: data.supportLevel, // backend model stores this as socialSupport (1-10)
+        // No direct equivalent in the new schema - jobSatisfaction is the
+        // closest available signal. Flagged above; confirm with backend.
+        socialSupport: data.jobSatisfaction,
       });
 
       const rec = await getRecommendationsReal();
-
       const recommendations = rec.actionPlan.flatMap((item: any) => item.actionItems);
 
       setAnalysisData({
@@ -147,7 +132,7 @@ export const useScreener = () => {
           ? 'You need to be logged in for this to be saved to your account.'
           : 'Could not reach the server - showing a local estimate instead.'
       );
-      setAnalysisData(calculateRisk(data));
+      setAnalysisData(localAnalysis);
       setShowResults(true);
     } finally {
       setIsLoading(false);

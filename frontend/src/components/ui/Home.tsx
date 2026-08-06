@@ -10,7 +10,7 @@ import { fetchMoodHistory, logMoodEntry, fetchProgress, fetchSurveyHistory, fetc
 import { getUser } from '../../utils/auth';
 import StressRadar from "../dashboard/StressRadar";
 import WhatIfSimulator from "../dashboard/WhatIfSimulator";
-import { fetchMoodHistory, fetchGoals, logMoodEntry } from '../../utils/api';
+import {  fetchGoals } from '../../utils/api';
 
 
 interface HomeProps {
