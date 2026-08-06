@@ -575,38 +575,6 @@ export const Login: React.FC<LoginProps> = ({ onBack, onLogin }) => {
               </motion.button>
             </motion.form>
 
-            {/* Divider */}
-            <div className="flex items-center gap-4 my-5">
-              <div className="flex-1 h-px bg-white/10"></div>
-              <span className="text-xs text-warm-white/30">OR</span>
-              <div className="flex-1 h-px bg-white/10"></div>
-            </div>
-
-            {/* Social Login */}
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-              className="grid grid-cols-2 gap-3"
-            >
-              <motion.button
-                whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,255,255,0.15)' }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center justify-center gap-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-warm-white/70 hover:text-warm-white transition-all duration-300 text-sm"
-              >
-                <i className="fab fa-google text-base text-red-400"></i>
-                <span className="text-xs">Google</span>
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,255,255,0.15)' }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center justify-center gap-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-warm-white/70 hover:text-warm-white transition-all duration-300 text-sm"
-              >
-                <i className="fab fa-github text-base text-white"></i>
-                <span className="text-xs">GitHub</span>
-              </motion.button>
-            </motion.div>
-
             {/* Sign Up Link */}
             <motion.p 
               initial={{ opacity: 0 }}

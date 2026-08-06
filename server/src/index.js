@@ -7,6 +7,9 @@ const surveyRoutes = require('./routes/surveyRoutes');
 const recommendationRoutes = require('./routes/recommendationRoutes');
 const goalRoutes = require('./routes/goalRoutes');
 const moodRoutes = require('./routes/moodRoutes');
+const exerciseRoutes = require('./routes/exerciseRoutes');
+const progressRoutes = require('./routes/progressRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 const app = express();
 app.use(cors());
@@ -23,6 +26,9 @@ app.use('/api/survey', surveyRoutes);
 app.use('/api/recommendations', recommendationRoutes);
 app.use('/api/goals', goalRoutes);
 app.use('/api/mood', moodRoutes);
+app.use('/api/exercises', exerciseRoutes);
+app.use('/api/progress', progressRoutes);
+app.use('/api/admin', adminRoutes);
 
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {

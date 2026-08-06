@@ -1,4 +1,5 @@
 const prisma = require('../config/prisma');
+const { logActivity } = require('../utils/activity');
 
 // Default set of goals seeded for a user the first time they load their goals
 const DEFAULT_GOALS = [
@@ -27,7 +28,12 @@ exports.getGoals = async (req, res) => {
       });
     }
 
-    const totalXP = goals.reduce((sum, g) => sum + g.xp, 0);
+    // BUGFIX: this previously summed every goal's full xp value regardless
+    // of progress, so a brand new user with 0% completion showed 180 XP.
+    // Real XP is only earned once a goal actually hits its target.
+    const totalXP = goals
+      .filter((g) => g.completed >= g.target)
+      .reduce((sum, g) => sum + g.xp, 0);
 
     res.json({ goals, totalXP });
   } catch (error) {
@@ -49,6 +55,8 @@ exports.completeGoalStep = async (req, res) => {
       where: { id },
       data: { completed: Math.min(goal.completed + 1, goal.target) },
     });
+
+    await logActivity(userId, 'GOAL');
 
     res.json({ goal: updated });
   } catch (error) {
