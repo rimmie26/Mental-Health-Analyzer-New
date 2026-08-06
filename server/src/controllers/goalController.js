@@ -28,12 +28,12 @@ exports.getGoals = async (req, res) => {
       });
     }
 
-    // BUGFIX: this previously summed every goal's full xp value regardless
-    // of progress, so a brand new user with 0% completion showed 180 XP.
-    // Real XP is only earned once a goal actually hits its target.
-    const totalXP = goals
-      .filter((g) => g.completed >= g.target)
-      .reduce((sum, g) => sum + g.xp, 0);
+    const totalXP = Math.round(
+      goals.reduce((sum, g) => {
+      const earned = (g.completed / g.target) * g.xp;
+      return sum + earned;
+      }, 0)
+    );
 
     res.json({ goals, totalXP });
   } catch (error) {

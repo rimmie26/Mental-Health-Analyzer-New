@@ -6,11 +6,10 @@ import { AdminDashboard } from './AdminDashboard';
 import MoodGarden from './MoodGarden';
 import AIInsights from './AIInsights';
 import WeeklyGoals from "../dashboard/WeeklyGoals";
-import { fetchMoodHistory, logMoodEntry, fetchProgress, fetchSurveyHistory, fetchExerciseHistory } from '../../utils/api';
+import { fetchMoodHistory, logMoodEntry, fetchProgress, fetchSurveyHistory, fetchExerciseHistory, fetchGoals } from '../../utils/api';
 import { getUser } from '../../utils/auth';
 import StressRadar from "../dashboard/StressRadar";
 import WhatIfSimulator from "../dashboard/WhatIfSimulator";
-import {  fetchGoals } from '../../utils/api';
 
 
 interface HomeProps {
@@ -39,10 +38,11 @@ export const Home: React.FC<HomeProps> = ({ onStartScreening, onLogin, onNavigat
   const [moodHistory, setMoodHistory] = useState<Array<{date: string; mood: string; emoji: string}>>([]);
   const [currentTip, setCurrentTip] = useState<{title: string, content: string, emoji: string} | null>(null);
   const [userXP, setUserXP] = useState(0);
+  const user = getUser();
+  const username = user?.name || "Friend";
   const [latestSurvey, setLatestSurvey] = useState<{ sleepHours: number; riskScore: number; createdAt: string } | null>(null);
   const [exercisesThisWeek, setExercisesThisWeek] = useState(0);
   const [completedExerciseIdsToday, setCompletedExerciseIdsToday] = useState<Set<number>>(new Set());
-  const user = getUser(); // real logged-in user, was previously ignored ("Good Morning, Alex!" was hardcoded)
 
   // Load real mood history and XP total from the backend on mount
   useEffect(() => {
@@ -425,10 +425,7 @@ export const Home: React.FC<HomeProps> = ({ onStartScreening, onLogin, onNavigat
         <div className="relative">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold">
-                {new Date().getHours() < 12 ? 'Good Morning' : new Date().getHours() < 18 ? 'Good Afternoon' : 'Good Evening'}
-                {user?.name ? `, ${user.name.split(' ')[0]}` : ''}! 👋
-              </h2>
+              <h2 className="text-2xl font-bold">Good Morning, {username}! 👋</h2>
               <p className="text-white/90 text-sm mt-1">{todayQuote.text}</p>
               <p className="text-white/70 text-xs mt-1">— {todayQuote.author}</p>
             </div>
