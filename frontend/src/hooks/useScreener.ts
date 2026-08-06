@@ -131,6 +131,10 @@ export const useScreener = () => {
         riskLevel: riskLevelLabel(rec.overallRisk),
         riskScore: Math.round(rec.riskScore),
         recommendations: recommendations.length > 0 ? recommendations : localAnalysis.recommendations,
+        // Keep rootCause -> actionItems grouped (not just a flat list) so the
+        // results screen can show WHY each recommendation was made, e.g.
+        // "Poor Sleep" -> ["Establish a strict 11 PM sleep schedule", ...].
+        actionPlan: rec.actionPlan,
         rootCauses: rec.actionPlan.map((item: any) => item.rootCause),
       });
       setShowResults(true);

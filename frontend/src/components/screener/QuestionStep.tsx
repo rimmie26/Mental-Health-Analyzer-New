@@ -17,8 +17,7 @@ export const QuestionStep = ({ step, stepIndex, form }: QuestionStepProps) => {
   };
 
   // Important questions marked with *
-  const importantQuestions = ['age', 'gender', 'academicPressure', 'studySatisfaction', 'sleepHours', 'financialStress', 'supportLevel', 'emotionalExhaustion', 'anxietyLevel', 'mentalWellbeing'];
-
+  const importantQuestions = ['gender', 'age', 'academicPressure', 'studySatisfaction', 'sleepDuration', 'financialStress', 'suicidalThoughts'];
   const renderInput = (question: any) => {
     const baseClasses = "w-full px-4 py-3 rounded-xl border-2 bg-white/90 backdrop-blur-sm transition-all duration-300 focus:outline-none";
     const errorClasses = errors[question.id as keyof ScreenerData] 

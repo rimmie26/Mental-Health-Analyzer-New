@@ -1,13 +1,33 @@
 import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 
+interface ActionPlanItem {
+  rootCause: string;
+  actionItems: string[];
+}
+
 interface ResultsDashboardProps {
   data: any;
   onReset: () => void;
 }
 
+// Root causes come from the backend as short labels (see recommendationController.js's
+// ACTION_MAP keys). Map each to an icon/color so "why you're at risk" reads as a proper
+// diagnosis section rather than a plain list.
+const ROOT_CAUSE_STYLE: Record<string, { icon: string; color: string; bg: string }> = {
+  'Poor Sleep': { icon: 'fa-moon', color: 'text-blue-600', bg: 'bg-blue-50' },
+  'Academic Pressure': { icon: 'fa-book', color: 'text-amber-600', bg: 'bg-amber-50' },
+  'Financial Stress': { icon: 'fa-coins', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  'Loneliness': { icon: 'fa-user-group', color: 'text-purple-600', bg: 'bg-purple-50' },
+  'General Academic Stress': { icon: 'fa-triangle-exclamation', color: 'text-orange-600', bg: 'bg-orange-50' },
+};
+const DEFAULT_ROOT_CAUSE_STYLE = { icon: 'fa-circle-exclamation', color: 'text-gray-600', bg: 'bg-gray-50' };
+
 export const ResultsDashboard = ({ data, onReset }: ResultsDashboardProps) => {
   const { riskLevel, riskScore, stressFactors, recommendations, riskDistribution } = data;
+  // Only present when the survey was actually submitted to the backend (see useScreener.ts) -
+  // the client-only fallback estimate has no rootCause -> actionItems mapping to show.
+  const actionPlan: ActionPlanItem[] | undefined = data.actionPlan;
 
   const colors: Record<string, string> = { 
     Low: 'text-green-500', 
@@ -84,19 +104,51 @@ export const ResultsDashboard = ({ data, onReset }: ResultsDashboardProps) => {
         </div>
       </div>
 
-      <div className="mt-8 bg-gradient-to-r from-pastel-yellow/20 to-pastel-blue/20 rounded-2xl p-6">
-        <h3 className="text-lg font-semibold mb-3">
-          <i className="fas fa-lightbulb text-dark-yellow mr-2"></i> Recommendations
-        </h3>
-        <ul className="space-y-2">
-          {recommendations.map((rec: string, i: number) => (
-            <li key={i} className="flex items-start gap-2">
-              <i className="fas fa-check-circle text-dark-yellow mt-1"></i>
-              <span>{rec}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
+      {actionPlan && actionPlan.length > 0 ? (
+        <div className="mt-8 bg-white/80 rounded-2xl p-6 shadow-md">
+          <h3 className="text-lg font-semibold mb-1">
+            <i className="fas fa-magnifying-glass text-dark-yellow mr-2"></i> Why you're at risk
+          </h3>
+          <p className="text-sm text-charcoal/60 mb-4">
+            Your recommendations below are matched to the specific factors driving your score.
+          </p>
+          <div className="space-y-4">
+            {actionPlan.map((item, i) => {
+              const style = ROOT_CAUSE_STYLE[item.rootCause] || DEFAULT_ROOT_CAUSE_STYLE;
+              return (
+                <div key={i} className={`rounded-xl p-4 ${style.bg}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <i className={`fas ${style.icon} ${style.color}`}></i>
+                    <span className={`font-semibold ${style.color}`}>{item.rootCause}</span>
+                  </div>
+                  <ul className="space-y-1.5">
+                    {item.actionItems.map((action, j) => (
+                      <li key={j} className="flex items-start gap-2 text-sm text-charcoal/80">
+                        <i className="fas fa-check-circle text-dark-yellow mt-0.5"></i>
+                        <span>{action}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <div className="mt-8 bg-gradient-to-r from-pastel-yellow/20 to-pastel-blue/20 rounded-2xl p-6">
+          <h3 className="text-lg font-semibold mb-3">
+            <i className="fas fa-lightbulb text-dark-yellow mr-2"></i> Recommendations
+          </h3>
+          <ul className="space-y-2">
+            {recommendations.map((rec: string, i: number) => (
+              <li key={i} className="flex items-start gap-2">
+                <i className="fas fa-check-circle text-dark-yellow mt-1"></i>
+                <span>{rec}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </motion.div>
   );
 };
