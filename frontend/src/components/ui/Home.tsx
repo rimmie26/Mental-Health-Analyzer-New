@@ -8,6 +8,7 @@ import MoodGarden from './MoodGarden';
 import AIInsights from './AIInsights';
 import WeeklyGoals from "../dashboard/WeeklyGoals";
 import StressRadar from "../dashboard/StressRadar";
+import WhatIfSimulator from "../dashboard/WhatIfSimulator";
 
 interface HomeProps {
   onStartScreening: () => void;
@@ -465,6 +466,9 @@ export const Home: React.FC<HomeProps> = ({ onStartScreening, onLogin, onNavigat
 
       {/* Stress Radar */}
       <StressRadar />
+
+      {/* What-if Simulator */}
+      <WhatIfSimulator />
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
