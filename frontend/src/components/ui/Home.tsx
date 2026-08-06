@@ -9,6 +9,8 @@ import WeeklyGoals from "../dashboard/WeeklyGoals";
 import { fetchMoodHistory, logMoodEntry, fetchProgress, fetchSurveyHistory, fetchExerciseHistory } from '../../utils/api';
 import { getUser } from '../../utils/auth';
 import StressRadar from "../dashboard/StressRadar";
+import WhatIfSimulator from "../dashboard/WhatIfSimulator";
+import { fetchMoodHistory, fetchGoals, logMoodEntry } from '../../utils/api';
 
 
 interface HomeProps {
@@ -548,6 +550,9 @@ export const Home: React.FC<HomeProps> = ({ onStartScreening, onLogin, onNavigat
 
       {/* Stress Radar */}
       <StressRadar />
+
+      {/* What-if Simulator */}
+      <WhatIfSimulator />
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
