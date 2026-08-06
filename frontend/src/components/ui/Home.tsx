@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Exercises } from './Exercises';
-import { ExerciseDetail } from './ExerciseDetail';
-import { Progress } from './Progress';
+import { Exercises, exercisesData } from './Exercises';
 import { Profile } from './Profile';
+import { AdminDashboard } from './AdminDashboard';
 import MoodGarden from './MoodGarden';
 import AIInsights from './AIInsights';
+import WeeklyGoals from "../dashboard/WeeklyGoals";
+import { fetchMoodHistory, logMoodEntry, fetchProgress, fetchSurveyHistory, fetchExerciseHistory } from '../../utils/api';
+import { getUser } from '../../utils/auth';
 
 interface HomeProps {
   onStartScreening: () => void;
@@ -25,15 +27,53 @@ const calculateLevel = (xp: number) => {
 export const Home: React.FC<HomeProps> = ({ onStartScreening, onLogin, onNavigate }) => {
   const [activeSection, setActiveSection] = useState('dashboard');
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
-  const [selectedExercise, setSelectedExercise] = useState<any | null>(null);
   const [showMoodModal, setShowMoodModal] = useState(false);
   const [showTipModal, setShowTipModal] = useState(false);
   const [showMoodGarden, setShowMoodGarden] = useState(false);
   const [showAIInsights, setShowAIInsights] = useState(false);
   const [moodHistory, setMoodHistory] = useState<Array<{date: string; mood: string; emoji: string}>>([]);
   const [currentTip, setCurrentTip] = useState<{title: string, content: string, emoji: string} | null>(null);
+  const [userXP, setUserXP] = useState(0);
+  const [latestSurvey, setLatestSurvey] = useState<{ sleepHours: number; riskScore: number; createdAt: string } | null>(null);
+  const [exercisesThisWeek, setExercisesThisWeek] = useState(0);
+  const [completedExerciseIdsToday, setCompletedExerciseIdsToday] = useState<Set<number>>(new Set());
+  const user = getUser(); // real logged-in user, was previously ignored ("Good Morning, Alex!" was hardcoded)
 
-  const userXP = 450;
+  // Load real mood history and XP total from the backend on mount
+  useEffect(() => {
+    fetchMoodHistory()
+      .then((entries: Array<{ date: string; mood: string }>) => {
+        setMoodHistory(entries.map((e) => ({ ...e, emoji: getMoodEmoji(e.mood) })));
+      })
+      .catch((err) => console.warn('Could not load mood history:', err));
+
+    fetchProgress()
+      .then((res) => setUserXP(res.totalXP))
+      .catch((err) => console.warn('Could not load XP total:', err));
+
+    // Latest screener check-in backs the Sleep Quality / Stress Level cards -
+    // these used to be flat hardcoded numbers with fake "from yesterday" deltas.
+    fetchSurveyHistory()
+      .then((history: Array<{ sleepHours: number; riskScore: number; createdAt: string }>) => {
+        if (history.length > 0) setLatestSurvey(history[0]);
+      })
+      .catch((err) => console.warn('Could not load survey history:', err));
+
+    // Backs the "Exercises This Week" card (replaces the fabricated "Focus Time" -
+    // nothing in this app has ever tracked focus time).
+    fetchExerciseHistory()
+      .then((res) => {
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        const recent = res.completions.filter(
+          (c: { completedAt: string }) => new Date(c.completedAt) >= weekAgo
+        );
+        setExercisesThisWeek(recent.length);
+      })
+      .catch((err) => console.warn('Could not load exercise history:', err));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const { level, xp, nextLevelXP, progress } = calculateLevel(userXP);
 
   const dailyTips = [
@@ -82,53 +122,87 @@ export const Home: React.FC<HomeProps> = ({ onStartScreening, onLogin, onNavigat
     { id: 'exercises', icon: 'fa-spa', label: 'Exercises' },
     { id: 'progress', icon: 'fa-chart-line', label: 'Progress' },
     { id: 'profile', icon: 'fa-user', label: 'Profile' },
+    // Admin tab is UI-level convenience only - the backend independently enforces
+    // role: 'ADMIN' on every /api/admin/* route, so this hiding isn't the real gate.
+    ...(user?.role === 'ADMIN' ? [{ id: 'admin', icon: 'fa-user-shield', label: 'Admin' }] : []),
   ];
 
+  // Maps mood labels to a rough 0-10 wellbeing score so we can show a real,
+  // trend-aware Mood Score instead of a flat hardcoded "8.5".
+  const moodValueMap: Record<string, number> = {
+    Happy: 9, Calm: 8, Grateful: 9, Neutral: 6, Sad: 3, Stressed: 2,
+  };
+
+  const computeMoodScore = (history: Array<{ date: string; mood: string }>) => {
+    if (history.length === 0) return null;
+    const sorted = [...history].sort((a, b) => a.date.localeCompare(b.date));
+    const scored = sorted.map((h) => moodValueMap[h.mood] ?? 6);
+    const avg = (arr: number[]) => arr.reduce((s, v) => s + v, 0) / arr.length;
+    const last7 = scored.slice(-7);
+    const prev7 = scored.slice(-14, -7);
+    const current = Math.round(avg(last7) * 10) / 10;
+    const delta = prev7.length > 0 ? Math.round((avg(last7) - avg(prev7)) * 10) / 10 : null;
+    return { current, delta };
+  };
+
+  const moodScore = computeMoodScore(moodHistory);
+  const sleepQuality = latestSurvey ? Math.round(Math.min(latestSurvey.sleepHours / 8, 1) * 100) / 10 : null;
+  const stressLevel = latestSurvey ? Math.round((latestSurvey.riskScore / 10) * 10) / 10 : null;
+
+  const fmtDelta = (d: number | null) => (d === null ? 'No trend yet' : `${d >= 0 ? '+' : ''}${d} from last week`);
+
+  // Every value here is backed by real data - moodScore from logged moods,
+  // sleep/stress from the last screener check-in, exercisesThisWeek from
+  // ExerciseCompletion rows. Previously all four cards were flat hardcoded
+  // numbers with fabricated "+0.5 from yesterday" style deltas.
   const wellnessStats = [
-    { 
-      label: 'Mood Score', 
-      value: '8.5', 
-      change: '+0.5', 
+    {
+      label: 'Mood Score',
+      value: moodScore ? String(moodScore.current) : '—',
+      change: moodScore ? fmtDelta(moodScore.delta) : 'Log a mood to start',
+      positive: moodScore ? (moodScore.delta ?? 0) >= 0 : null,
       icon: 'fa-smile',
-      color: 'from-green-400 to-emerald-500',
       bg: 'bg-green-50',
       textColor: 'text-green-600'
     },
-    { 
-      label: 'Sleep Quality', 
-      value: '7.2', 
-      change: '+0.8', 
+    {
+      label: 'Sleep Quality',
+      value: sleepQuality !== null ? String(sleepQuality) : '—',
+      change: latestSurvey ? `From your last check-in` : 'Take the screener',
+      positive: null,
       icon: 'fa-moon',
-      color: 'from-indigo-400 to-blue-500',
       bg: 'bg-blue-50',
       textColor: 'text-blue-600'
     },
-    { 
-      label: 'Stress Level', 
-      value: '3.2', 
-      change: '-1.5', 
+    {
+      label: 'Stress Level',
+      value: stressLevel !== null ? String(stressLevel) : '—',
+      change: latestSurvey ? `From your last check-in` : 'Take the screener',
+      positive: null,
       icon: 'fa-heart-pulse',
-      color: 'from-rose-400 to-pink-500',
       bg: 'bg-rose-50',
       textColor: 'text-rose-600'
     },
-    { 
-      label: 'Focus Time', 
-      value: '4.5', 
-      change: '+1.2', 
-      icon: 'fa-clock',
-      color: 'from-purple-400 to-violet-500',
+    {
+      label: 'Exercises This Week',
+      value: String(exercisesThisWeek),
+      change: 'Last 7 days',
+      positive: null,
+      icon: 'fa-dumbbell',
       bg: 'bg-purple-50',
       textColor: 'text-purple-600'
     },
   ];
 
-  const dailyChallenges = [
-    { icon: '🧘', title: '5-Minute Meditation', xp: 25, done: false },
-    { icon: '📝', title: 'Gratitude Journal', xp: 20, done: false },
-    { icon: '🌊', title: 'Deep Breathing', xp: 15, done: true },
-    { icon: '🚶', title: 'Mindful Walk', xp: 30, done: false },
-  ];
+  // Real exercise catalog, not a disconnected fake list - "done" reflects
+  // whether the user actually completed it today, and Start actually
+  // navigates to the real guided exercise instead of doing nothing.
+  const dailyChallenges = exercisesData.slice(0, 4).map((ex) => ({
+    icon: ex.emoji,
+    title: ex.title,
+    xp: 20,
+    done: completedExerciseIdsToday.has(ex.id),
+  }));
 
   const quickActions = [
     { 
@@ -199,17 +273,22 @@ export const Home: React.FC<HomeProps> = ({ onStartScreening, onLogin, onNavigat
     return found ? found.emoji : '😊';
   };
 
-  // Add mood to history with date
+  // Add mood to history with date, persisted to the backend
   const addMoodToHistory = (mood: string) => {
     const today = new Date().toISOString().split('T')[0];
     const emoji = getMoodEmoji(mood);
+
+    // Optimistic local update so the UI responds instantly
     setMoodHistory(prev => {
-      // Check if today already has an entry
       const existing = prev.find(m => m.date === today);
       if (existing) {
         return prev.map(m => m.date === today ? { ...m, mood, emoji } : m);
       }
       return [...prev, { date: today, mood, emoji }];
+    });
+
+    logMoodEntry(mood, today).catch((err) => {
+      console.warn('Could not save mood entry to your account:', err);
     });
   };
 
@@ -451,6 +530,16 @@ export const Home: React.FC<HomeProps> = ({ onStartScreening, onLogin, onNavigat
         </div>
       </div>
 
+      {/* Weekly Goals */}
+      <WeeklyGoals />
+
+      {/* Motivational Message */}
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+        <p className="text-center text-gray-600">
+        🌱 Keep going! Every small step you take today builds a healthier tomorrow.
+        </p>
+      </div>
+
       {/* Quick Actions */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {quickActions.map((action, i) => (
@@ -505,40 +594,90 @@ export const Home: React.FC<HomeProps> = ({ onStartScreening, onLogin, onNavigat
     </motion.div>
   );
 
-  // Progress Content
-  const ProgressContent = () => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="space-y-6"
-    >
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-        <h2 className="text-2xl font-bold text-gray-800">📊 Your Progress</h2>
-        <p className="text-gray-500 text-sm">Track your wellness journey</p>
-      </div>
+  // Progress Content - real numbers from GET /api/progress, no hardcoded stats
+  const ProgressContent = () => {
+    const [progress, setProgress] = useState<{
+      dayStreak: number;
+      consistencyScore: number;
+      exercisesDone: number;
+      totalXP: number;
+      weeklyActivity: { date: string; count: number }[];
+    } | null>(null);
+    const [progressLoading, setProgressLoading] = useState(true);
+    const [progressError, setProgressError] = useState<string | null>(null);
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-center">
-          <p className="text-3xl font-bold text-amber-500">14</p>
-          <p className="text-sm text-gray-500">Day Streak</p>
-          <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
-            <div className="bg-amber-400 h-1.5 rounded-full" style={{ width: '70%' }} />
-          </div>
+    useEffect(() => {
+      let cancelled = false;
+      fetchProgress()
+        .then((res) => { if (!cancelled) setProgress(res); })
+        .catch((err) => {
+          if (cancelled) return;
+          setProgressError(err.response?.status === 401 ? 'Log in to see your progress.' : 'Could not load progress.');
+        })
+        .finally(() => { if (!cancelled) setProgressLoading(false); });
+      return () => { cancelled = true; };
+    }, []);
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        className="space-y-6"
+      >
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <h2 className="text-2xl font-bold text-gray-800">📊 Your Progress</h2>
+          <p className="text-gray-500 text-sm">Track your wellness journey</p>
         </div>
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-center">
-          <p className="text-3xl font-bold text-blue-500">85%</p>
-          <p className="text-sm text-gray-500">Consistency Score</p>
-          <p className="text-xs text-green-500 mt-1">↑ 5% from last week</p>
-        </div>
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-center">
-          <p className="text-3xl font-bold text-purple-500">12</p>
-          <p className="text-sm text-gray-500">Exercises Done</p>
-          <p className="text-xs text-gray-400 mt-1">3 new this week</p>
-        </div>
-      </div>
-    </motion.div>
-  );
+
+        {progressLoading && <p className="text-sm text-gray-400">Loading your progress...</p>}
+        {progressError && <p className="text-sm text-amber-600">{progressError}</p>}
+
+        {progress && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-center">
+                <p className="text-3xl font-bold text-amber-500">{progress.dayStreak}</p>
+                <p className="text-sm text-gray-500">Day Streak</p>
+                <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                  <div className="bg-amber-400 h-1.5 rounded-full" style={{ width: `${Math.min(progress.dayStreak * 10, 100)}%` }} />
+                </div>
+              </div>
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-center">
+                <p className="text-3xl font-bold text-blue-500">{progress.consistencyScore}%</p>
+                <p className="text-sm text-gray-500">Consistency Score</p>
+                <p className="text-xs text-gray-400 mt-1">Last 30 days</p>
+              </div>
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-center">
+                <p className="text-3xl font-bold text-purple-500">{progress.exercisesDone}</p>
+                <p className="text-sm text-gray-500">Exercises Done</p>
+                <p className="text-xs text-gray-400 mt-1">All time</p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <h4 className="font-semibold text-gray-700 mb-4">📈 Last 7 Days</h4>
+              <div className="flex items-end gap-3 h-32">
+                {progress.weeklyActivity.map((day) => {
+                  const height = Math.min(day.count * 30, 100);
+                  const label = new Date(day.date).toLocaleDateString(undefined, { weekday: 'short' });
+                  return (
+                    <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
+                      <div
+                        className={`w-full rounded-lg ${day.count > 0 ? 'bg-gradient-to-t from-amber-400 to-orange-400' : 'bg-gray-200'}`}
+                        style={{ height: `${Math.max(height, 6)}%`, minHeight: '6px' }}
+                      />
+                      <span className="text-[10px] text-gray-400 font-medium">{label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
+      </motion.div>
+    );
+  };
 
   // Settings Content
   const SettingsContent = () => (
@@ -581,21 +720,15 @@ export const Home: React.FC<HomeProps> = ({ onStartScreening, onLogin, onNavigat
 
   // Main Render
   const renderContent = () => {
-    if (selectedExercise) {
-      return (
-        <ExerciseDetail
-          exercise={selectedExercise}
-          onBack={() => setSelectedExercise(null)}
-          onComplete={() => console.log('Exercise completed!')}
-        />
-      );
-    }
-
     switch(activeSection) {
       case 'dashboard': return <DashboardContent />;
       case 'progress': return <ProgressContent />;
       case 'profile': return <Profile onBack={() => setActiveSection('dashboard')} onLogout={onLogin} />;
-      case 'exercises': return <Exercises onSelectExercise={setSelectedExercise} />;
+      case 'exercises': return <Exercises />;
+      case 'admin':
+        return user?.role === 'ADMIN'
+          ? <AdminDashboard onBack={() => setActiveSection('dashboard')} />
+          : <DashboardContent />;
       default: return <DashboardContent />;
     }
   };

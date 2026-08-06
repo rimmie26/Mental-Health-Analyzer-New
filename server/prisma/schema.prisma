@@ -1,0 +1,124 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id         String   @id @default(uuid())
+  email      String   @unique
+  password   String
+  name       String
+  role       String   @default("STUDENT") // "STUDENT" or "ADMIN"
+  department String?
+  year       Int?
+  gender     String?
+  createdAt  DateTime @default(now())
+
+  surveys             SurveyResponse[]
+  recommendations     Recommendation[]
+  goals               Goal[]
+  moodEntries         MoodEntry[]
+  exerciseCompletions ExerciseCompletion[]
+  activityLogs        ActivityLog[]
+
+  // Indexes exist to make Ritika's admin analytics group-by queries
+  // (department-wise / year-wise / gender-wise breakdowns) fast, and to
+  // let requireAdmin-style middleware filter by role efficiently.
+  @@index([department])
+  @@index([year])
+  @@index([gender])
+  @@index([role])
+}
+
+model Goal {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  completed Int      @default(0)
+  target    Int
+  xp        Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt // lets us know the last day a goal was touched
+
+  @@index([userId])
+}
+
+model MoodEntry {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  date      String   // "YYYY-MM-DD", one entry per user per date
+  mood      String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, date])
+  @@index([userId])
+}
+
+// One row per exercise a student finishes. This is what "Exercises Done"
+// on the Progress/Profile screens should actually read from - previously
+// ExerciseDetail.tsx's onComplete only did console.log() and nothing was saved.
+model ExerciseCompletion {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  exerciseId    Int      // matches the id in frontend/src/components/ui/Exercises.tsx
+  exerciseTitle String   // denormalized snapshot, so history reads fine even if the catalog changes
+  xp            Int      @default(20)
+  completedAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([userId, completedAt])
+}
+
+// A single day-level source of truth for "was this user active today",
+// written to whenever a user logs a mood, completes an exercise, or makes
+// goal progress. This is what real Day Streak / Consistency Score should
+// be computed from, instead of a hardcoded "14" / "85%".
+model ActivityLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String   // "MOOD" | "EXERCISE" | "GOAL"
+  date      String   // "YYYY-MM-DD"
+  createdAt DateTime @default(now())
+
+  @@unique([userId, type, date])
+  @@index([userId, date])
+}
+
+model SurveyResponse {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id])
+  academicPressure Int
+  sleepHours       Float
+  financialStress  Int
+  socialSupport    Int
+  overallRisk      String   // "LOW", "MEDIUM", "HIGH"
+  riskScore        Float
+  topRootCauses    String   // Stored as JSON string
+  createdAt        DateTime @default(now())
+
+  // Indexes for Ritika's analytics dashboard: risk trend over time,
+  // and grouping/filtering by risk level.
+  @@index([createdAt])
+  @@index([overallRisk])
+  @@index([userId])
+}
+
+model Recommendation {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  rootCause   String
+  actionPlan  String   // Stored as JSON string
+  isCompleted Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}

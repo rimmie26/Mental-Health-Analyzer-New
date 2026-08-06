@@ -29,7 +29,9 @@ export const QuestionStep = ({ step, stepIndex, form }: QuestionStepProps) => {
       case 'number':
         return (
           <input
-            {...register(question.id as Path<ScreenerData>, { valueAsNumber: true })}
+            {...register(question.id as Path<ScreenerData>, {
+              setValueAs: (v) => (v === '' || v === null || v === undefined ? undefined : Number(v)),
+            })}
             type="number"
             placeholder={question.placeholder}
             min={question.min}

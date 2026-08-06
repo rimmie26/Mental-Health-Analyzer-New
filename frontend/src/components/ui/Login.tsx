@@ -1,9 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 
+import { loginUser, registerUser } from '../../utils/api';
+import { saveAuth } from '../../utils/auth';
+import type { AuthUser } from '../../utils/auth';
+
 interface LoginProps {
   onBack?: () => void;
-  onLogin?: (email: string, password: string) => void;
+  onLogin?: (user: AuthUser) => void;
 }
 
 // Reusable Shader Background Hook (same as homepage)
@@ -363,23 +367,30 @@ void main(void) {
 
 // Login Component with Shader Background
 export const Login: React.FC<LoginProps> = ({ onBack, onLogin }) => {
+  const [isSignup, setIsSignup] = useState(false);
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  
+  const [error, setError] = useState<string | null>(null);
+
   const canvasRef = useShaderBackground();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     setIsLoading(true);
     try {
-      if (onLogin) {
-        await onLogin(email, password);
-      } else {
-        console.log('Login attempt:', { email, password, rememberMe });
-      }
+      const { token, user } = isSignup
+        ? await registerUser({ email, password, name })
+        : await loginUser(email, password);
+
+      saveAuth(token, user);
+      onLogin?.(user);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -460,6 +471,31 @@ export const Login: React.FC<LoginProps> = ({ onBack, onLogin }) => {
               onSubmit={handleSubmit} 
               className="space-y-4"
             >
+              {error && (
+                <div className="bg-red-500/10 border border-red-400/30 text-red-300 text-xs rounded-lg px-3 py-2">
+                  {error}
+                </div>
+              )}
+
+              {isSignup && (
+                <div>
+                  <label className="block text-xs font-medium text-warm-white/70 mb-1">
+                    Full Name
+                  </label>
+                  <div className="relative">
+                    <i className="fas fa-user absolute left-3 top-1/2 -translate-y-1/2 text-warm-white/30 text-xs"></i>
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Enter your name"
+                      className="w-full pl-9 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-warm-white placeholder-warm-white/30 focus:outline-none focus:border-pastel-yellow/40 transition-all duration-300 text-sm"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* Email Field */}
               <div>
                 <label className="block text-xs font-medium text-warm-white/70 mb-1">
@@ -535,7 +571,7 @@ export const Login: React.FC<LoginProps> = ({ onBack, onLogin }) => {
                 ) : (
                   <i className="fas fa-sign-in-alt mr-2"></i>
                 )}
-                {isLoading ? 'Signing in...' : 'Sign In'}
+                {isLoading ? (isSignup ? 'Creating account...' : 'Signing in...') : (isSignup ? 'Create Account' : 'Sign In')}
               </motion.button>
             </motion.form>
 
@@ -578,12 +614,13 @@ export const Login: React.FC<LoginProps> = ({ onBack, onLogin }) => {
               transition={{ delay: 0.5 }}
               className="text-center text-xs text-warm-white/50 mt-5"
             >
-              Don't have an account?{' '}
+              {isSignup ? 'Already have an account?' : "Don't have an account?"}{' '}
               <button
                 type="button"
+                onClick={() => { setIsSignup(!isSignup); setError(null); }}
                 className="text-pastel-yellow hover:text-warm-white transition font-medium"
               >
-                Sign Up
+                {isSignup ? 'Sign In' : 'Sign Up'}
               </button>
             </motion.p>
           </div>
