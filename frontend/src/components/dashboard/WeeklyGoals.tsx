@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { fetchGoals, completeGoal as completeGoalApi } from "../../utils/api";
 
 type Goal = {
-  id: number;
+  id: string;
   title: string;
   completed: number;
   target: number;
@@ -10,38 +11,29 @@ type Goal = {
 };
 
 const WeeklyGoals = () => {
-  const [goals, setGoals] = useState<Goal[]>([
-    {
-      id: 1,
-      title: "Sleep 8 Hours",
-      completed: 5,
-      target: 7,
-      xp: 40,
-    },
-    {
-      id: 2,
-      title: "Meditation",
-      completed: 6,
-      target: 7,
-      xp: 30,
-    },
-    {
-      id: 3,
-      title: "Exercise",
-      completed: 3,
-      target: 5,
-      xp: 50,
-    },
-    {
-      id: 4,
-      title: "Study 2 Hours",
-      completed: 4,
-      target: 7,
-      xp: 60,
-    },
-  ]);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [totalXP, setTotalXP] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const completeGoal = (id: number) => {
+  useEffect(() => {
+    let cancelled = false;
+    fetchGoals()
+      .then((res) => {
+        if (cancelled) return;
+        setGoals(res.goals);
+        setTotalXP(res.totalXP);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err.response?.status === 401 ? 'Log in to track your goals.' : 'Could not load goals.');
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const completeGoal = async (id: string) => {
+    // Optimistic update so the UI feels instant
     setGoals((prev) =>
       prev.map((goal) =>
         goal.id === id && goal.completed < goal.target
@@ -49,16 +41,29 @@ const WeeklyGoals = () => {
           : goal
       )
     );
+    try {
+      const { goal } = await completeGoalApi(id);
+      setGoals((prev) => prev.map((g) => (g.id === id ? goal : g)));
+    } catch (err) {
+      console.error('Failed to save goal progress:', err);
+      // Roll back on failure
+      setGoals((prev) =>
+        prev.map((goal) =>
+          goal.id === id && goal.completed > 0
+            ? { ...goal, completed: goal.completed - 1 }
+            : goal
+        )
+      );
+    }
   };
 
-  const totalXP = goals.reduce((sum, goal) => sum + goal.xp, 0);
-
-  const completion =
-    Math.round(
-      (goals.reduce((sum, goal) => sum + goal.completed, 0) /
-        goals.reduce((sum, goal) => sum + goal.target, 0)) *
-        100
-    );
+  const completion = goals.length
+    ? Math.round(
+        (goals.reduce((sum, goal) => sum + goal.completed, 0) /
+          goals.reduce((sum, goal) => sum + goal.target, 0)) *
+          100
+      )
+    : 0;
 
   return (
     <div className="bg-white rounded-2xl shadow-lg p-6">
@@ -72,7 +77,10 @@ const WeeklyGoals = () => {
         </span>
       </div>
 
-      {goals.map((goal) => {
+      {loading && <p className="text-sm text-gray-400">Loading your goals...</p>}
+      {error && <p className="text-sm text-amber-600">{error}</p>}
+
+      {!loading && !error && goals.map((goal) => {
         const progress = (goal.completed / goal.target) * 100;
         const progressColor =progress >= 70
             ? "from-green-400 to-green-600"

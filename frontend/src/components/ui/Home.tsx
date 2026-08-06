@@ -8,6 +8,7 @@ import MoodGarden from './MoodGarden';
 import AIInsights from './AIInsights';
 import WeeklyGoals from "../dashboard/WeeklyGoals";
 import StressRadar from "../dashboard/StressRadar";
+import { fetchMoodHistory, logMoodEntry, fetchGoals } from '../../utils/api';
 
 interface HomeProps {
   onStartScreening: () => void;
@@ -34,8 +35,22 @@ export const Home: React.FC<HomeProps> = ({ onStartScreening, onLogin, onNavigat
   const [showAIInsights, setShowAIInsights] = useState(false);
   const [moodHistory, setMoodHistory] = useState<Array<{date: string; mood: string; emoji: string}>>([]);
   const [currentTip, setCurrentTip] = useState<{title: string, content: string, emoji: string} | null>(null);
+  const [userXP, setUserXP] = useState(0);
 
-  const userXP = 450;
+  // Load real mood history and XP total from the backend on mount
+  useEffect(() => {
+    fetchMoodHistory()
+      .then((entries: Array<{ date: string; mood: string }>) => {
+        setMoodHistory(entries.map((e) => ({ ...e, emoji: getMoodEmoji(e.mood) })));
+      })
+      .catch((err) => console.warn('Could not load mood history:', err));
+
+    fetchGoals()
+      .then((res) => setUserXP(res.totalXP))
+      .catch((err) => console.warn('Could not load XP total:', err));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const { level, xp, nextLevelXP, progress } = calculateLevel(userXP);
 
   const dailyTips = [
@@ -201,17 +216,22 @@ export const Home: React.FC<HomeProps> = ({ onStartScreening, onLogin, onNavigat
     return found ? found.emoji : '😊';
   };
 
-  // Add mood to history with date
+  // Add mood to history with date, persisted to the backend
   const addMoodToHistory = (mood: string) => {
     const today = new Date().toISOString().split('T')[0];
     const emoji = getMoodEmoji(mood);
+
+    // Optimistic local update so the UI responds instantly
     setMoodHistory(prev => {
-      // Check if today already has an entry
       const existing = prev.find(m => m.date === today);
       if (existing) {
         return prev.map(m => m.date === today ? { ...m, mood, emoji } : m);
       }
       return [...prev, { date: today, mood, emoji }];
+    });
+
+    logMoodEntry(mood, today).catch((err) => {
+      console.warn('Could not save mood entry to your account:', err);
     });
   };
 
