@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { getToken } from '../../utils/auth';
 
 interface MoodEntry {
   date: string;
@@ -10,19 +12,25 @@ interface MoodEntry {
 interface AIInsightsProps {
   moodHistory: MoodEntry[];
   onClose: () => void;
+  screeningData?: any[];
 }
 
 // AI Insights Generation
-const generateInsights = (history: MoodEntry[]) => {
-  if (history.length === 0) {
+const generateInsights = (history: MoodEntry[], screeningData?: any[]) => {
+  if (history.length === 0 && (!screeningData || screeningData.length === 0)) {
     return {
       summary: "Start logging your mood to receive personalized insights! 🌟",
       patterns: [],
       recommendations: ["Log your mood daily to get started"],
-      stats: { total: 0, unique: 0, bestMood: 'N/A', consistency: '0%' }
+      stats: { total: 0, unique: 0, bestMood: 'N/A', consistency: '0%' },
+      radarData: getDefaultRadarData(),
+      riskLevel: 'N/A',
+      riskScore: 0,
+      totalScreenings: 0
     };
   }
 
+  // Process mood data
   const moods = history.map(m => m.mood);
   const moodCounts = moods.reduce((acc: any, mood) => {
     acc[mood] = (acc[mood] || 0) + 1;
@@ -33,7 +41,7 @@ const generateInsights = (history: MoodEntry[]) => {
   const uniqueMoods = Object.keys(moodCounts).length;
   const totalEntries = history.length;
 
-  // Calculate consistency (how many days in a row)
+  // Calculate consistency streak
   let streak = 0;
   let maxStreak = 0;
   const sortedDates = history.map(m => new Date(m.date)).sort((a, b) => a.getTime() - b.getTime());
@@ -51,23 +59,80 @@ const generateInsights = (history: MoodEntry[]) => {
     maxStreak = Math.max(maxStreak, streak);
   }
 
-  // Mood distribution for chart
+  // Mood distribution
   const distribution = Object.entries(moodCounts).map(([mood, count]) => ({
     mood,
     count,
     percentage: Math.round((count as number / totalEntries) * 100)
   }));
 
+  // Process screening data for radar
+  let radarData = getDefaultRadarData();
+  let riskLevel = 'N/A';
+  let riskScore = 0;
+  let totalScreenings = screeningData?.length || 0;
+
+  if (screeningData && screeningData.length > 0) {
+    const latest = screeningData[screeningData.length - 1];
+    
+    // Calculate radar values from screening answers
+    const academicStress = latest?.answers?.academicPressure || latest?.academicPressure || 5;
+    const sleepHours = latest?.answers?.sleepHours || latest?.sleepHours || 6;
+    const financialStress = latest?.answers?.financialStress || latest?.financialStress || 4;
+    const socialSupport = latest?.answers?.socialSupport || latest?.socialSupport || 6;
+    const emotionalExhaustion = latest?.answers?.emotionalExhaustion || latest?.emotionalExhaustion || 5;
+
+    radarData = [
+      { 
+        dimension: 'Academics', 
+        value: Math.min(Math.round((academicStress / 10) * 100), 100),
+        fullMark: 100 
+      },
+      { 
+        dimension: 'Sleep', 
+        value: Math.min(Math.round((8 - Math.min(sleepHours, 8)) / 8 * 100), 100),
+        fullMark: 100 
+      },
+      { 
+        dimension: 'Financial', 
+        value: Math.min(Math.round((financialStress / 10) * 100), 100),
+        fullMark: 100 
+      },
+      { 
+        dimension: 'Social Support', 
+        value: Math.min(Math.round((10 - Math.min(socialSupport, 10)) / 10 * 100), 100),
+        fullMark: 100 
+      },
+      { 
+        dimension: 'Emotional', 
+        value: Math.min(Math.round((emotionalExhaustion / 10) * 100), 100),
+        fullMark: 100 
+      },
+    ];
+
+    riskLevel = latest?.riskLevel || 'Moderate';
+    riskScore = latest?.riskScore || 65;
+  }
+
   // Generate pattern insights
   const patterns: string[] = [];
   if (maxStreak >= 7) patterns.push(`🔥 You've maintained a ${maxStreak}-day mood tracking streak!`);
   if (uniqueMoods >= 5) patterns.push(`🌈 You're experiencing a rich emotional palette with ${uniqueMoods} different moods.`);
-  if (mostCommon && mostCommon[0] === 'Happy' || mostCommon[0] === 'Calm') {
+  if (mostCommon && (mostCommon[0] === 'Happy' || mostCommon[0] === 'Calm')) {
     patterns.push(`😊 Your most common mood is ${mostCommon[0]} — that's wonderful!`);
-  } else if (mostCommon && mostCommon[0] === 'Stressed' || mostCommon[0] === 'Sad') {
+  } else if (mostCommon && (mostCommon[0] === 'Stressed' || mostCommon[0] === 'Sad')) {
     patterns.push(`💪 You've been feeling ${mostCommon[0]} often. Consider trying our breathing exercises.`);
   }
   if (totalEntries >= 30) patterns.push(`📊 Consistent tracking for ${totalEntries} days — you're building a great habit!`);
+  
+  // Add screening insights
+  if (totalScreenings > 0) {
+    patterns.push(`📋 You've completed ${totalScreenings} mental health screenings.`);
+    if (riskLevel === 'Low') patterns.push('✅ Your current risk level is Low — keep up the good work!');
+    else if (riskLevel === 'Moderate') patterns.push('🌱 Your current risk level is Moderate — consider trying some wellness exercises.');
+    else if (riskLevel === 'High') patterns.push('💚 Your current risk level is High — please reach out for support.');
+  }
+  
   if (patterns.length === 0) patterns.push("🌱 Keep tracking your mood to unlock more insights!");
 
   // Recommendations
@@ -82,13 +147,20 @@ const generateInsights = (history: MoodEntry[]) => {
   if (uniqueMoods < 3) {
     recommendations.push('🌈 Try to notice and log a wider range of emotions');
   }
+  if (totalScreenings === 0) {
+    recommendations.push('📊 Complete a mental health screening to get detailed insights');
+  }
+  if (riskLevel === 'High') {
+    recommendations.push('💚 Please reach out to a mental health professional for support');
+    recommendations.push('📞 Contact your campus counseling center for immediate help');
+  }
   if (recommendations.length === 0) {
     recommendations.push('🌟 Keep up the great work! You\'re doing amazing.');
     recommendations.push('🌸 Share your mood garden with a friend');
   }
 
   return {
-    summary: `You've logged ${totalEntries} moods across ${uniqueMoods} different emotions. ${mostCommon ? `Your most common mood is ${mostCommon[0]}.` : ''}`,
+    summary: `You've logged ${totalEntries} moods across ${uniqueMoods} different emotions. ${mostCommon ? `Your most common mood is ${mostCommon[0]}.` : ''} ${totalScreenings > 0 ? `You've completed ${totalScreenings} screenings.` : ''}`,
     patterns,
     recommendations,
     stats: {
@@ -97,12 +169,25 @@ const generateInsights = (history: MoodEntry[]) => {
       bestMood: mostCommon ? mostCommon[0] : 'N/A',
       consistency: `${Math.round((maxStreak / Math.max(totalEntries, 30)) * 100)}%`
     },
-    distribution
+    distribution,
+    radarData,
+    riskLevel,
+    riskScore,
+    totalScreenings
   };
 };
 
-export const AIInsights: React.FC<AIInsightsProps> = ({ moodHistory, onClose }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'patterns' | 'recommendations'>('overview');
+// Default radar data
+const getDefaultRadarData = () => [
+  { dimension: 'Academics', value: 0, fullMark: 100 },
+  { dimension: 'Sleep', value: 0, fullMark: 100 },
+  { dimension: 'Financial', value: 0, fullMark: 100 },
+  { dimension: 'Social Support', value: 0, fullMark: 100 },
+  { dimension: 'Emotional', value: 0, fullMark: 100 },
+];
+
+export const AIInsights: React.FC<AIInsightsProps> = ({ moodHistory, onClose, screeningData }) => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'patterns' | 'recommendations' | 'radar'>('overview');
   const [insights, setInsights] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -110,18 +195,18 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ moodHistory, onClose }) 
     // Simulate AI processing
     setIsLoading(true);
     setTimeout(() => {
-      const generated = generateInsights(moodHistory);
+      const generated = generateInsights(moodHistory, screeningData);
       setInsights(generated);
       setIsLoading(false);
     }, 800);
-  }, [moodHistory]);
+  }, [moodHistory, screeningData]);
 
   if (isLoading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
         <div className="bg-white rounded-2xl p-8 text-center shadow-2xl">
           <div className="w-16 h-16 border-4 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <h3 className="text-lg font-semibold text-gray-800">Analyzing your mood patterns...</h3>
+          <h3 className="text-lg font-semibold text-gray-800">Analyzing your wellness data...</h3>
           <p className="text-sm text-gray-500">AI is learning about your emotional wellness</p>
         </div>
       </div>
@@ -129,6 +214,8 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ moodHistory, onClose }) 
   }
 
   if (!insights) return null;
+
+  const hasRadarData = insights.radarData.some((d: any) => d.value > 0);
 
   return (
     <motion.div
@@ -185,7 +272,7 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ moodHistory, onClose }) 
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-4">
+        <div className="flex flex-wrap gap-2 mb-4">
           <button
             onClick={() => setActiveTab('overview')}
             className={`px-4 py-2 rounded-xl text-sm font-medium transition ${
@@ -196,6 +283,17 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ moodHistory, onClose }) 
           >
             <i className="fas fa-chart-pie mr-2"></i>
             Overview
+          </button>
+          <button
+            onClick={() => setActiveTab('radar')}
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition ${
+              activeTab === 'radar'
+                ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            <i className="fas fa-chart-radar mr-2"></i>
+            Stress Radar
           </button>
           <button
             onClick={() => setActiveTab('patterns')}
@@ -230,30 +328,128 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ moodHistory, onClose }) 
               className="space-y-4"
             >
               <h4 className="font-semibold text-gray-700">📊 Mood Distribution</h4>
-              <div className="space-y-2">
-                {insights.distribution.map((item: any) => (
-                  <div key={item.mood} className="flex items-center gap-3">
-                    <span className="text-sm w-20 text-gray-600">{item.mood}</span>
-                    <div className="flex-1 h-4 bg-gray-100 rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${item.percentage}%` }}
-                        transition={{ duration: 0.5 }}
-                        className={`h-full rounded-full bg-gradient-to-r ${
-                          item.mood === 'Happy' ? 'from-yellow-400 to-yellow-500' :
-                          item.mood === 'Calm' ? 'from-green-400 to-green-500' :
-                          item.mood === 'Neutral' ? 'from-gray-400 to-gray-500' :
-                          item.mood === 'Sad' ? 'from-blue-400 to-blue-500' :
-                          item.mood === 'Stressed' ? 'from-red-400 to-red-500' :
-                          'from-amber-400 to-orange-500'
-                        }`}
-                        style={{ width: `${item.percentage}%` }}
-                      />
+              {insights.distribution.length > 0 ? (
+                <div className="space-y-2">
+                  {insights.distribution.map((item: any) => (
+                    <div key={item.mood} className="flex items-center gap-3">
+                      <span className="text-sm w-20 text-gray-600">{item.mood}</span>
+                      <div className="flex-1 h-4 bg-gray-100 rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${item.percentage}%` }}
+                          transition={{ duration: 0.5 }}
+                          className={`h-full rounded-full bg-gradient-to-r ${
+                            item.mood === 'Happy' ? 'from-yellow-400 to-yellow-500' :
+                            item.mood === 'Calm' ? 'from-green-400 to-green-500' :
+                            item.mood === 'Neutral' ? 'from-gray-400 to-gray-500' :
+                            item.mood === 'Sad' ? 'from-blue-400 to-blue-500' :
+                            item.mood === 'Stressed' ? 'from-red-400 to-red-500' :
+                            'from-amber-400 to-orange-500'
+                          }`}
+                          style={{ width: `${item.percentage}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-gray-500 w-12">{item.percentage}%</span>
                     </div>
-                    <span className="text-xs text-gray-500 w-12">{item.percentage}%</span>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 text-sm">Log your mood to see distribution here.</p>
+              )}
+            </motion.div>
+          )}
+
+          {activeTab === 'radar' && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="space-y-4"
+            >
+              <div className="flex items-center justify-between">
+                <h4 className="font-semibold text-gray-700">📡 Stress Radar</h4>
+                {insights.totalScreenings > 0 && (
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                    {insights.totalScreenings} screenings
+                  </span>
+                )}
               </div>
+              
+              {hasRadarData ? (
+                <>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RadarChart data={insights.radarData}>
+                        <PolarGrid stroke="#e2e8f0" />
+                        <PolarAngleAxis 
+                          dataKey="dimension" 
+                          tick={{ fill: '#4a5568', fontSize: 11 }}
+                        />
+                        <PolarRadiusAxis 
+                          angle={30} 
+                          domain={[0, 100]} 
+                          tick={{ fill: '#4a5568', fontSize: 9 }}
+                        />
+                        <Radar
+                          name="Stress Level"
+                          dataKey="value"
+                          stroke="#f59e0b"
+                          fill="#f59e0b"
+                          fillOpacity={0.3}
+                        />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'white', 
+                            borderRadius: '8px',
+                            border: '1px solid #e2e8f0'
+                          }}
+                        />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <div className="bg-gray-50 rounded-lg p-2 text-center">
+                      <p className="text-xs text-gray-500">Risk Level</p>
+                      <p className={`text-sm font-bold ${
+                        insights.riskLevel === 'High' ? 'text-red-500' : 
+                        insights.riskLevel === 'Moderate' ? 'text-amber-500' : 
+                        insights.riskLevel === 'Low' ? 'text-green-500' :
+                        'text-gray-500'
+                      }`}>
+                        {insights.riskLevel || 'N/A'}
+                      </p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-2 text-center">
+                      <p className="text-xs text-gray-500">Risk Score</p>
+                      <p className="text-sm font-bold text-gray-800">{insights.riskScore || 0}%</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-2 text-center">
+                      <p className="text-xs text-gray-500">Screenings</p>
+                      <p className="text-sm font-bold text-gray-800">{insights.totalScreenings}</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-2 text-center">
+                      <p className="text-xs text-gray-500">Status</p>
+                      <p className={`text-sm font-bold ${
+                        insights.totalScreenings > 0 ? 'text-green-500' : 'text-gray-400'
+                      }`}>
+                        {insights.totalScreenings > 0 ? 'Active' : 'Inactive'}
+                      </p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="text-5xl mb-3">📊</div>
+                  <h4 className="text-lg font-semibold text-gray-600">No Data Available</h4>
+                  <p className="text-gray-500 text-sm">Complete a screening to see your wellness radar here.</p>
+                  <button
+                    onClick={() => window.location.href = '/screener'}
+                    className="mt-3 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-full text-sm hover:shadow-lg transition"
+                  >
+                    Start Screening
+                  </button>
+                </div>
+              )}
             </motion.div>
           )}
 
